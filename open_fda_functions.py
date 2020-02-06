@@ -1,7 +1,9 @@
 import requests
+import json
 import pandas as pd
-import yaml
-from flask import json
+import csv
+import os
+import math
 
 def get_results(url):
     response = requests.get(url)
@@ -20,12 +22,7 @@ def get_meta(url):
     return meta
 
 
-import requests
-import json
-import pandas as pd
-import csv
-import os
-import math
+
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
