@@ -5,6 +5,8 @@ import csv
 import os
 import math
 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 def get_results(url):
     response = requests.get(url)
     if response.ok:
@@ -20,12 +22,6 @@ def get_meta(url):
     meta = d["meta"]
     meta = pd.DataFrame(meta)
     return meta
-
-
-
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
-
 
 def fda_url(query, data_base="udi", count=False, field_count='', limit=100):
 
