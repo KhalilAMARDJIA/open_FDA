@@ -29,7 +29,7 @@ def fda_url(query, data_base="udi", count=False, field_count='', limit=100):
     api = f'https://api.fda.gov/device/{data_base}.json?{key}&search='
 
     if count == True:
-        url = f'{api}{query}&count={field_count}'
+        urls = f'{api}{query}&count={field_count}'
         
 
     elif count == False:
@@ -39,13 +39,17 @@ def fda_url(query, data_base="udi", count=False, field_count='', limit=100):
         number_results = JSON_re['meta']['results']['total']
 
         if number_results > 100:
+
+            urls = []
+
             n_skips = math.ceil(number_results / 100)
             for i in range (0, n_skips):
                 skip = 100*i
                 url = f'{api}{query}&limit={limit}&skip={skip}'
-                
+                urls.append(url)
+
         else: 
             skip = 0
-            url = f'{api}{query}&limit={limit}&skip={skip}'
+            urls = f'{api}{query}&limit={limit}&skip={skip}'
             
-    return url
+    return urls
