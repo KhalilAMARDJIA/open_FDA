@@ -10,6 +10,14 @@ def url_to_df(url):
     df = pd.DataFrame(json_re)
     return df
 
+
+
+
+search = input("Query: ")
+database = input(
+    "choose database from (event, 510k, udi, recall, enforcement): ")
+
+
 def df_to_csv(urls):
     
     if isinstance(urls, list):
@@ -17,18 +25,13 @@ def df_to_csv(urls):
         for url in urls:
             df = url_to_df(url)
             final_df = final_df.append(df, sort = False)
-        final_df.to_csv(f'FDA_CSV_{update_date}.csv', encoding='utf-8-sig', sep=";")
+        final_df.to_csv(f'FDA_CSV_{database}_{update_date}.csv', encoding='utf-8-sig', sep=";")
 
     else:
         final_df = url_to_df(urls)
-        final_df.to_csv(f'FDA_CSV_{update_date}.csv', encoding='utf-8-sig', sep=";")
-
-
-search = input("Query: ")
-database = input(
-    "choose database from (event, 510k, udi, recall, enforcement): ")
+        final_df.to_csv(f'FDA_CSV_{database}_{update_date}.csv', encoding='utf-8-sig', sep=";")
 
 urls = fda.fda_url(search, data_base=database)
 df_to_csv(urls)
 
-os.startfile(f'FDA_CSV_{update_date}.csv')
+os.startfile(f'FDA_CSV_{database}_{update_date}.csv')
