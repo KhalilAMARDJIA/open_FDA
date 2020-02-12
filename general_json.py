@@ -19,10 +19,10 @@ def url_to_json(urls):
 
 search = input("Query: ")
 database = input(
-    "choose database from (event, 510k, udi, recall, enforcement): ")
+    "choose database from (event, 510k, udi, recall, enforcement, registrationlisting, classification): ")
 
 urls = fda.fda_url(search, data_base=database)
 data = url_to_json(urls)
 
-with open(f'FDA_JSON_{database}_{update_date}.json', 'w', encoding='utf-8') as f:
+with open(f'{update_date}_FDA_JSON_{database}.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)

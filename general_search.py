@@ -15,7 +15,7 @@ def url_to_df(url):
 
 search = input("Query: ")
 database = input(
-    "choose database from (event, 510k, udi, recall, enforcement): ")
+    "choose database from (event, 510k, udi, recall, enforcement, registrationlisting, classification): ")
 
 
 def df_to_csv(urls):
@@ -25,13 +25,13 @@ def df_to_csv(urls):
         for url in urls:
             df = url_to_df(url)
             final_df = final_df.append(df, sort = False)
-        final_df.to_csv(f'FDA_CSV_{database}_{update_date}.csv', encoding='utf-8-sig', sep=";")
+        final_df.to_csv(f'{update_date}_FDA_CSV_{database}.csv', encoding='utf-8-sig', sep="\t")
 
     else:
         final_df = url_to_df(urls)
-        final_df.to_csv(f'FDA_CSV_{database}_{update_date}.csv', encoding='utf-8-sig', sep=";")
+        final_df.to_csv(f'{update_date}_FDA_CSV_{database}.csv', encoding='utf-8-sig', sep="\t")
 
 urls = fda.fda_url(search, data_base=database)
 df_to_csv(urls)
 
-os.startfile(f'FDA_CSV_{database}_{update_date}.csv')
+os.startfile(f'{update_date}_FDA_CSV_{database}.csv')

@@ -19,7 +19,7 @@ def UDI_parser(result):
 search = input("search_UDI_database: ")
 urls = fda_url(search)
 with open ('UDI_data.csv', 'w', newline='') as f:
-    writer = csv.writer(f,delimiter=";")
+    writer = csv.writer(f,delimiter="\t")
     writer.writerow(["company_name","k_number", "is_single_use",  "brand_name", "device_sizes"])
 
     if isinstance(urls,list):
