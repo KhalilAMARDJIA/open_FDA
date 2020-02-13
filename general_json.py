@@ -18,6 +18,9 @@ def url_to_json(urls):
     return json_re
 
 search = input("Query: ")
+search = search.replace(" ", "+AND+")
+search = "("+ search + ")"
+
 database = input(
     "choose database from (event, 510k, udi, recall, enforcement, registrationlisting, classification): ")
 
