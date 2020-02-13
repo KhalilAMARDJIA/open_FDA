@@ -13,7 +13,7 @@ with open(filename, encoding='utf8') as file:
 
 
 with open('FDA_event.csv', 'w', newline='', encoding='utf8') as file:
-    writer = csv.writer(file, delimiter='\t')
+    writer = csv.writer(file, delimiter=';')
     writer.writerow(['report_numbe', 'manufacturer_d_name','product_problem_flag', 'date_received',
                      'brand_name', 'device_name', 'product_problems', 'text'])
 
@@ -29,7 +29,6 @@ with open('FDA_event.csv', 'w', newline='', encoding='utf8') as file:
             product_problems = utils.stop_char(record['product_problems'])
         except KeyError:
             product_problems = []
-    
 
         text = utils.stop_char(record['mdr_text']) 
 
