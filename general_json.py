@@ -3,8 +3,6 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 import openFDA_url as fda
 import json
 
-update_date = fda.get_meta('https://api.fda.gov/device/event.json?search=in2bones')['last_updated']
-
 def url_to_json(urls):
     if isinstance(urls, list):
         json_re = []
@@ -20,6 +18,7 @@ def url_to_json(urls):
 search = input("Query: ")
 search = search.replace(" ", "+AND+")
 search = "("+ search + ")"
+update_date = fda.get_meta(f'https://api.fda.gov/device/event.json?search={search}')['last_updated']
 
 database = input(
     "choose database from (event, 510k, udi, recall, enforcement, registrationlisting, classification): ")
