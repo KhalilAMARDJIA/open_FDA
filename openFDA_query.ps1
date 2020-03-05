@@ -19,6 +19,7 @@ if ($response -eq "OK") {
     Select-Object -expand meta
 
     $n_results = $meta.results.total
+    $update = $meta.last_updated
 }
 
 if ($n_results -gt 100) {
@@ -48,6 +49,8 @@ foreach ($url in $urls) {
 
 $fda_data |
 ConvertTo-Json | 
-Out-File "data_fda.json"
+Out-File "data_fda$$database.json"
+
+Write-Output "last update: $update"
 
 .\data_fda.json
