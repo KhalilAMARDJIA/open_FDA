@@ -2,10 +2,9 @@ Set-Location C:\\Users\\khali\\Desktop\\openFDA
 
 # Variables
 
-# $database = Read-Host "Please select the database from udi, event, enforcement, 510k"
-# $search = Read-Host "Please enter your query"
-$database = "udi"
-$search = "in2bones+AND+PIT'STOP"
+$database = Read-Host "Please select the database from udi, event, enforcement, 510k"
+$search = Read-Host "Please enter your query"
+
 $limit = 100
 
 # request
@@ -49,7 +48,7 @@ foreach ($url in $urls) {
 
 $fda_data |
 ConvertTo-Json | 
-Out-File "data_fda$$database.json"
+Out-File "data_fda.json"
 
 Write-Output "last update: $update"
 
