@@ -1,4 +1,4 @@
-Set-Location C:\\Users\\khali\\Desktop\\openFDA
+Set-Location E:\\Scripts\\open_FDA
 
 # Variables
 
@@ -7,13 +7,17 @@ $search = Read-Host "Please enter your query"
 
 $limit = 100
 
+
 # request
 $url = "https://api.fda.gov/device/$database.json?search=$search&limit=$limit"
-$response = Invoke-WebRequest $url
+
+
+$response = Invoke-WebRequest -Uri $url -UseBasicParsing 
+
 $response = $response.StatusDescription
 
 if ($response -eq "OK") {
-    $meta = Invoke-WebRequest $url |
+    $meta = Invoke-WebRequest -Uri $url -UseBasicParsing|
     ConvertFrom-Json |
     Select-Object -expand meta
 
@@ -39,7 +43,7 @@ foreach ($i in 0..$n_skips) {
 $fda_data = @()
 
 foreach ($url in $urls) {
-    $results = Invoke-WebRequest $url 
+    $results = Invoke-WebRequest -Uri $url -UseBasicParsing
     $data_content = $results.Content
     $fda_data += $data_content
 }
@@ -47,6 +51,6 @@ foreach ($url in $urls) {
 
 
 $fda_data |
-Out-File "data_fda.json"
+Out-File "data_fda_$update.json"
 
-.\data_fda.json
+Invoke-Item "data_fda_$update.json"
