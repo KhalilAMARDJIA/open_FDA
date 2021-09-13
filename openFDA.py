@@ -70,4 +70,49 @@ def general_json(query, data_base = 'event'):
     print("last updated in: ", last_updated, "with ", n_results, " results")
     return raw_data
 
-data = general_json(query='in2bones', data_base= "udi")
+
+data = general_json(query='in2bones', data_base= "event")
+
+with open('openFDA_raw_data.json', 'w') as f:
+    json.dump(data, f, indent= 5)
+
+report_number, manufacturer_d_name, date_received, brand_name, product_problems, patient_problems, text_1_code, text_1, text_0_code, text_0 = [], [], [], [], [], [], [], [], [], []
+for record in data:
+        report_number.append(record['report_number'])
+        manufacturer_d_name.append(record['device'][0]['manufacturer_d_name'])
+        date_received.append(record['date_received'])
+        brand_name.append(record['device'][0]['brand_name'])
+
+        try:
+            product_problems.append(record['product_problems'])
+        except:
+            product_problems.append("")
+
+        try:
+            patient_problems.append(record['patient'][0]['patient_problems'])
+        except:
+            patient_problems.append("")
+
+        try:
+            text_1_code.append(record['mdr_text'][1]['text_type_code'])
+
+        except:
+            text_1_code.append("")
+        
+        try:
+            text_1.append(record['mdr_text'][1]['text'].lower())
+
+        except:
+            text_1.append("")
+
+        try:
+            text_0_code.append(record['mdr_text'][0]['text_type_code'])
+
+        except:
+            text_0_code.append("")
+
+        try:
+            text_0.append(record['mdr_text'][0]['text'].lower())
+
+        except:
+            text_0.append("")
