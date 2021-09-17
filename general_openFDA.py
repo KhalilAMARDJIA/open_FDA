@@ -2,9 +2,9 @@ import json
 import math
 import requests
 
-def fda_url(query, data_base="event", count=False, field_count='', limit=1000):
+def fda_url(query, database="event", count=False, field_count='', limit=1000):
     key = '&api_key=WuFW3nIY42Jq1SR9STTbDlQOfYNORGfeHsk5FFU9'
-    api = f'https://api.fda.gov/device/{data_base}.json?{key}&search='
+    api = f'https://api.fda.gov/device/{database}.json?{key}&search='
 
     if count == True:
         urls = f'{api}{query}&count={field_count}'
@@ -61,17 +61,17 @@ def url_to_json(urls):
     
     return json_re
 
-def general_json(query, data_base = 'event'):
-    urls = fda_url(query= query, data_base= data_base)
+def general_json(query, database = 'event'):
+    urls = fda_url(query= query, database= database)
     meta_data = get_meta(urls)
     last_updated = meta_data['last_updated']
     n_results = meta_data['results']['total']
     raw_data = url_to_json(urls)
     print(
-        f'From the {data_base} last updated in: {last_updated} with : {n_results} results'
+        f'From the {database} last updated in: {last_updated} with : {n_results} results'
 )
 
     with open('openFDA_raw_data.json', 'w') as f:
         json.dump(raw_data, f, indent= 5)
 
-    return raw_data, data_base
+    return raw_data, database
