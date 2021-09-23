@@ -14,6 +14,7 @@ def fda_url(query, database="event", count=False, field_count='', limit=1000):
         JSON_re = requests.get(meta_url).json()
         number_results = JSON_re['meta']['results']['total']
 
+
         if number_results > 1000:
             urls = []
             n_skips = math.ceil(number_results / 1000)
@@ -26,6 +27,7 @@ def fda_url(query, database="event", count=False, field_count='', limit=1000):
             skip = 0
             urls = f'{api}{query}&limit={limit}&skip={skip}'
 
+    print(urls)
     return urls
 
 def get_meta(urls):
