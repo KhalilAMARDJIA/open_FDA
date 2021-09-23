@@ -40,7 +40,7 @@ patient_problems_df = pd.DataFrame(
 patient_problems_df = patient_problems_df.transpose().sort_values(by='n')
 
 ftr_patient = ['No Code Available', 'No Known Impact Or Consequence To Patient', 'Symptoms or Conditions', 'No Information', 'No Consequences Or Impact To Patient',
-               'Appropriate Clinical Signs', 'No Clinical Signs', 'Conditions Term / Code Not Available', 'Insufficient Information', 'No Patient Involvement', 'Reaction']
+               'Appropriate Clinical Signs', 'No Clinical Signs', 'Conditions Term / Code Not Available', 'Insufficient Information', 'No Patient Involvement', 'Reaction', 'Patient Problem/Medical Problem']
 
 patient_problems_df = patient_problems_df.loc[~patient_problems_df.index.isin(
     ftr_patient)]
@@ -57,7 +57,7 @@ product_problems_df = pd.DataFrame(
 product_problems_df = product_problems_df.transpose().sort_values(by='n')
 
 ftr_product = ['Adverse Event Without Identified Device or Use Problem',
-               'Appropriate Term/Code Not Available', 'Unknown (for use when the device problem is not known)']
+               'Appropriate Term/Code Not Available', 'Unknown (for use when the device problem is not known)', 'Insufficient Information', 'No Apparent Adverse Event']
 
 product_problems_df = product_problems_df.loc[~product_problems_df.index.isin(
     ftr_product)]

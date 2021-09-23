@@ -1,51 +1,66 @@
 def parser_event(data):
-    report_number, date_received, manufacturer_d_name, brand_name, device_name, product_problems, patient_problems = [], [], [], [], [], [], []
+    report_number, date_received, manufacturer_d_name, brand_name, device_name, product_problems, patient_problems, text = [], [], [], [], [], [], [], []
 
     for record in data:
 
         report_number.append(record['report_number'])
         try:
-            manufacturer_d_name.append(record['device'][0]['manufacturer_d_name'])
-        except :
+            manufacturer_d_name.append(
+                record['device'][0]['manufacturer_d_name'])
+        except:
             manufacturer_d_name.append('')
 
         try:
             date_received.append(record['date_received'])
-        except :
+        except:
             date_received.append('')
 
         try:
             brand_name.append(record['device'][0]['brand_name'])
-        except :
+        except:
             brand_name.append('')
 
         try:
             device_name.append(record['device'][0]['openfda']['device_name'])
-        except :
+        except:
             device_name.append('')
-            
+
         try:
             product_problems.append(record['product_problems'])
-        except :
+        except:
             product_problems.append('')
 
         try:
             patient_problems.append(record['patient'][0]['patient_problems'])
-        except :
+        except:
             patient_problems.append('')
+        
+        try: 
+            mdr_text_0 = record['mdr_text'][0]['text']
+        except:
+            mdr_text_0 = ''
+        
+        try:
+            mdr_text_1 = record['mdr_text'][1]['text']
+        except:
+            mdr_text_1 = ''
 
+        mdr_text =  f'{mdr_text_1}\n\n{mdr_text_0}'
+        text.append(mdr_text)
 
     df = {
-        'report_number': report_number, 
-        'date_received' : date_received,
-        'manufacturer_d_name': manufacturer_d_name, 
-        'brand_name': brand_name, 
-        'device_name': device_name, 
+        'report_number': report_number,
+        'date_received': date_received,
+        'manufacturer_d_name': manufacturer_d_name,
+        'brand_name': brand_name,
+        'device_name': device_name,
         'product_problems': product_problems,
-        'patient_problems': patient_problems
+        'patient_problems': patient_problems,
+        'text': text
     }
 
     return df
+
 
 def parser_510k(data):
     device_name = []
@@ -78,10 +93,11 @@ def parser_510k(data):
             decision_description.append('')
 
     df = {'device_name': device_name, 'product_code': product_code,
-        'applicant': applicant, 'openfda_device': openfda_device,
-        'k_number': k_number, 'date_received':date_received,
-        'clearance_type': clearance_type, 'decision_description': decision_description}
+          'applicant': applicant, 'openfda_device': openfda_device,
+          'k_number': k_number, 'date_received': date_received,
+          'clearance_type': clearance_type, 'decision_description': decision_description}
     return df
+
 
 def parser_udi(data):
     public_device_record_key = []
@@ -98,17 +114,19 @@ def parser_udi(data):
         except:
             public_device_record_key.append('')
         try:
-            commercial_distribution_status.append(record['commercial_distribution_status'])
+            commercial_distribution_status.append(
+                record['commercial_distribution_status'])
         except:
             commercial_distribution_status.append('')
         try:
-            k_number.append(record['premarket_submissions'][0]['submission_number'])
+            k_number.append(record['premarket_submissions']
+                            [0]['submission_number'])
         except:
             k_number.append('')
         try:
             device_description.append(record['device_description'])
         except:
-            device_description.append('') 
+            device_description.append('')
         try:
             company_name.append(record['company_name'])
         except:
@@ -123,11 +141,11 @@ def parser_udi(data):
             public_version_date.append('')
 
     df = {'public_device_record_key': public_device_record_key,
-            'commercial_distribution_status': commercial_distribution_status,
-            'k_number' : k_number,
-            'device_description' : device_description,
-            'company_name' : company_name,
-            'brand_name': brand_name,
-            'public_version_date' : public_version_date
-        }
+          'commercial_distribution_status': commercial_distribution_status,
+          'k_number': k_number,
+          'device_description': device_description,
+          'company_name': company_name,
+          'brand_name': brand_name,
+          'public_version_date': public_version_date
+          }
     return df
