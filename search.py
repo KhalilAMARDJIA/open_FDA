@@ -1,30 +1,33 @@
-import os
-os.chdir('I:\openFDA\openFDA_functions')
-from general_openFDA import general_json
-import openFDA_parser
-import pandas as pd
+def main():
+   import os
+   from general_openFDA import general_json
+   import openFDA_parser
+   import pandas as pd
 
-search = input("Query: ")
-search = search.replace(" ", "+AND+")
-
-
-database = input(
-    "choose database from (event, 510k, udi, recall, enforcement, registrationlisting, classification): ")
-
-data, database = general_json(query = search, database = database)
+   search = input("Query: ")
+   search = search.replace(" ", "+AND+")
 
 
-if database == 'event':
-   df = openFDA_parser.parser_event(data= data)
-elif database == '510k':
-   df = openFDA_parser.parser_510k(data= data)
-elif database == 'udi':
-   df = openFDA_parser.parser_udi(data= data)
-else:
-   print(f'the {database} is not supported by openFDA_parser')
+   database = input(
+      "choose database from (event, 510k, udi, recall, enforcement, registrationlisting, classification): ")
 
-df = pd.DataFrame(df)
+   data, database = general_json(query = search, database = database)
 
-csv_name = f'{database}_data.csv'
-df.to_csv(csv_name, sep= ';', encoding= 'UTF-8')
-os.startfile(csv_name)
+
+   if database == 'event':
+      df = openFDA_parser.parser_event(data= data)
+   elif database == '510k':
+      df = openFDA_parser.parser_510k(data= data)
+   elif database == 'udi':
+      df = openFDA_parser.parser_udi(data= data)
+   else:
+      print(f'the {database} is not supported by openFDA_parser')
+
+   df = pd.DataFrame(df)
+
+   csv_name = f'{database}_data.csv'
+   df.to_csv(csv_name, sep= ';', encoding= 'UTF-8')
+   os.startfile(csv_name)
+
+if __name__ == "__main__":
+   main()

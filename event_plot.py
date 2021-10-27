@@ -1,3 +1,4 @@
+
 import pandas as pd
 from collections import Counter
 import plotly.express as px
@@ -39,7 +40,7 @@ ftr_patient = ['No Code Available', 'No Known Impact Or Consequence To Patient',
 patient_problems_df = patient_problems_df.loc[~patient_problems_df.index.isin(
     ftr_patient)]
 patient_problems_df = patient_problems_df.reset_index().rename(columns={'index': 'patient_problems'})
-
+patient_problems_df = patient_problems_df.nlargest(20, columns='n')
 fig = px.bar(
     template='simple_white',
     x = 'n',
@@ -59,6 +60,7 @@ product_problems_df = pd.DataFrame(
     dict(Counter(product_problems)), index=['n'])
 product_problems_df = product_problems_df.transpose().sort_values(by='n')
 
+
 ftr_product = ['Adverse Event Without Identified Device or Use Problem',
             'Appropriate Term/Code Not Available', 'Unknown (for use when the device problem is not known)', 'Insufficient Information', 'No Apparent Adverse Event']
 
@@ -66,6 +68,7 @@ product_problems_df = product_problems_df.loc[~product_problems_df.index.isin(
     ftr_product)]
 
 product_problems_df = product_problems_df.reset_index().rename(columns={'index': 'product_problems'})
+product_problems_df = product_problems_df.nlargest(20, columns='n')
 
 fig = px.bar(
     template='simple_white',
