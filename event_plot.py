@@ -1,23 +1,22 @@
 import pandas as pd
 from collections import Counter
-import matplotlib.pyplot as plt
+import plotly.express as px
 
 data = pd.read_csv("event_data.csv", sep=";")
 data = data.dropna()
 
-def series_freq_plot (pd_series, n = 20):
-    df = data['manufacturer_d_name'].value_counts()
-    df = pd.DataFrame({'name': df.index, 'n': df.values}).sort_values(by= 'n', ascending= False)
-    plot = df.nlargest(n, columns='n').plot.barh(x = 'name', y = 'n').invert_yaxis()
-    plt.tight_layout()
-    return plot
 
-series_freq_plot(data['manufacturer_d_name'], n = 20)
-plt.savefig('manufacturers.pdf')
-
-series_freq_plot(data['brand_name'], n = 20)
-plt.savefig('brand.pdf')
-
+fig = px.bar(
+    template='simple_white',
+    y='manufacturer_d_name',
+    color='brand_name',
+    color_discrete_sequence=px.colors.sequential.Cividis,
+    data_frame=data,
+    title=f'openFDA manufacturer and brand names from {len(data)} reports'
+)
+fig.update_traces(marker_line_color='black', marker_line_width=1)
+fig.update_layout(font_family="Courier New")
+fig.write_html("./plots/Manufacturer & brand names.html", auto_open=True)
 
 
 def str_pd_series_tolist(pd_series):
@@ -27,11 +26,6 @@ def str_pd_series_tolist(pd_series):
         main_list += lst
     return main_list
 
-
-def bar_plot(df, n=20):
-    df.nlargest(n, columns='n').plot.barh().invert_yaxis()
-    plt.tight_layout()
-
 # Patient problems analysis
 
 patient_problems = str_pd_series_tolist(data['patient_problems'])
@@ -40,13 +34,22 @@ patient_problems_df = pd.DataFrame(
 patient_problems_df = patient_problems_df.transpose().sort_values(by='n')
 
 ftr_patient = ['No Code Available', 'No Known Impact Or Consequence To Patient', 'Symptoms or Conditions', 'No Information', 'No Consequences Or Impact To Patient',
-               'Appropriate Clinical Signs', 'No Clinical Signs', 'Conditions Term / Code Not Available', 'Insufficient Information', 'No Patient Involvement', 'Reaction', 'Patient Problem/Medical Problem']
+            'Appropriate Clinical Signs', 'No Clinical Signs', 'Conditions Term / Code Not Available', 'Insufficient Information', 'No Patient Involvement', 'Reaction', 'Patient Problem/Medical Problem']
 
 patient_problems_df = patient_problems_df.loc[~patient_problems_df.index.isin(
     ftr_patient)]
+patient_problems_df = patient_problems_df.reset_index().rename(columns={'index': 'patient_problems'})
 
-bar_plot(df=patient_problems_df)
-plt.savefig('patient_problems.pdf')
+fig = px.bar(
+    template='simple_white',
+    x = 'n',
+    y='patient_problems',
+    data_frame=patient_problems_df,
+    title=f'openFDA patient problems from {len(data)} reports'
+)
+fig.update_traces(marker_line_color='black', marker_line_width=1, marker_color = 'lightgray')
+fig.update_layout(font_family="Courier New")
+fig.write_html("./plots/Patient problems.html", auto_open=True)
 
 
 # product problems analysis
@@ -57,10 +60,20 @@ product_problems_df = pd.DataFrame(
 product_problems_df = product_problems_df.transpose().sort_values(by='n')
 
 ftr_product = ['Adverse Event Without Identified Device or Use Problem',
-               'Appropriate Term/Code Not Available', 'Unknown (for use when the device problem is not known)', 'Insufficient Information', 'No Apparent Adverse Event']
+            'Appropriate Term/Code Not Available', 'Unknown (for use when the device problem is not known)', 'Insufficient Information', 'No Apparent Adverse Event']
 
 product_problems_df = product_problems_df.loc[~product_problems_df.index.isin(
     ftr_product)]
 
-bar_plot(df=product_problems_df)
-plt.savefig('product_problems.pdf')
+product_problems_df = product_problems_df.reset_index().rename(columns={'index': 'product_problems'})
+
+fig = px.bar(
+    template='simple_white',
+    x = 'n',
+    y='product_problems',
+    data_frame=product_problems_df,
+    title=f'openFDA product problems from {len(data)} reports'
+)
+fig.update_traces(marker_line_color='black', marker_line_width=1, marker_color = 'lightgray')
+fig.update_layout(font_family="Courier New")
+fig.write_html("./plots/Product problems.html", auto_open=True)
