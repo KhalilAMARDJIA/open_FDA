@@ -6,7 +6,7 @@ data = pd.read_csv("event_data.csv", sep=";")
 data = data.dropna()
 
 def series_freq_plot (pd_series, n = 20):
-    df = pd.crosstab(pd_series, [])['__dummy__']
+    df = data['manufacturer_d_name'].value_counts()
     df = pd.DataFrame({'name': df.index, 'n': df.values}).sort_values(by= 'n', ascending= False)
     plot = df.nlargest(n, columns='n').plot.barh(x = 'name', y = 'n').invert_yaxis()
     plt.tight_layout()
