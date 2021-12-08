@@ -3,18 +3,19 @@ import pandas as pd
 from collections import Counter
 import plotly.express as px
 
-data = pd.read_csv("event_data.csv", sep=";")
+data = pd.read_csv("event_data.csv", sep="|")
 data = data.dropna()
 
 
 fig = px.bar(
     template='simple_white',
-    y='manufacturer_d_name',
+    x='manufacturer_d_name',
     color='brand_name',
     color_discrete_sequence=px.colors.sequential.Cividis,
     data_frame=data,
     title=f'openFDA manufacturer and brand names from {len(data)} reports'
 )
+
 fig.update_traces(marker_line_color='black', marker_line_width=1)
 fig.update_layout(font_family="Courier New")
 fig.write_html("./plots/Manufacturer & brand names.html", auto_open=True)
@@ -32,7 +33,7 @@ def str_pd_series_tolist(pd_series):
 patient_problems = str_pd_series_tolist(data['patient_problems'])
 patient_problems_df = pd.DataFrame(
     dict(Counter(patient_problems)), index=['n'])
-patient_problems_df = patient_problems_df.transpose().sort_values(by='n')
+patient_problems_df = patient_problems_df.transpose()
 
 ftr_patient = ['No Code Available', 'No Known Impact Or Consequence To Patient', 'Symptoms or Conditions', 'No Information', 'No Consequences Or Impact To Patient',
             'Appropriate Clinical Signs', 'No Clinical Signs', 'Conditions Term / Code Not Available', 'Insufficient Information', 'No Patient Involvement', 'Reaction', 'Patient Problem/Medical Problem']
@@ -40,7 +41,7 @@ ftr_patient = ['No Code Available', 'No Known Impact Or Consequence To Patient',
 patient_problems_df = patient_problems_df.loc[~patient_problems_df.index.isin(
     ftr_patient)]
 patient_problems_df = patient_problems_df.reset_index().rename(columns={'index': 'patient_problems'})
-patient_problems_df = patient_problems_df.nlargest(20, columns='n')
+patient_problems_df = patient_problems_df.nlargest(20, columns='n').sort_values(by='n', ascending= True)
 fig = px.bar(
     template='simple_white',
     x = 'n',
@@ -58,7 +59,7 @@ fig.write_html("./plots/Patient problems.html", auto_open=True)
 product_problems = str_pd_series_tolist(data['product_problems'])
 product_problems_df = pd.DataFrame(
     dict(Counter(product_problems)), index=['n'])
-product_problems_df = product_problems_df.transpose().sort_values(by='n')
+product_problems_df = product_problems_df.transpose()
 
 
 ftr_product = ['Adverse Event Without Identified Device or Use Problem',
@@ -68,7 +69,7 @@ product_problems_df = product_problems_df.loc[~product_problems_df.index.isin(
     ftr_product)]
 
 product_problems_df = product_problems_df.reset_index().rename(columns={'index': 'product_problems'})
-product_problems_df = product_problems_df.nlargest(20, columns='n')
+product_problems_df = product_problems_df.nlargest(20, columns='n').sort_values(by='n', ascending= True)
 
 fig = px.bar(
     template='simple_white',

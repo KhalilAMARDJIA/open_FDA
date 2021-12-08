@@ -1,5 +1,5 @@
 def main():
-   import os
+
    from general_openFDA import general_json
    import openFDA_parser
    import pandas as pd
@@ -26,8 +26,7 @@ def main():
    df = pd.DataFrame(df)
 
    csv_name = f'{database}_data.csv'
-   df.to_csv(csv_name, sep= ';', encoding= 'UTF-8')
-   os.startfile(csv_name)
+   df.to_csv(csv_name, sep= '|', encoding= 'UTF-8')
 
 if __name__ == "__main__":
    main()

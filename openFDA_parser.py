@@ -45,7 +45,7 @@ def parser_event(data):
         except:
             mdr_text_1 = ''
 
-        mdr_text =  f'{mdr_text_1}\n\n{mdr_text_0}'
+        mdr_text =  f'{mdr_text_1} {mdr_text_0}'
         text.append(mdr_text)
 
     df = {
