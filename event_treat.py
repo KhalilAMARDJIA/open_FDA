@@ -1,4 +1,5 @@
 
+
 import pandas as pd
 import plotly.express as px
 import re
@@ -46,7 +47,8 @@ for col in product_p_matrix.columns:
 
 pubmed_full = pd.concat([data, patient_p_matrix, product_p_matrix], axis=1, join='inner')
 
-pubmed_full_pivot = pd.melt(pubmed_full, value_vars=pubmed_full.columns[9:len(pubmed_full.columns)+1], id_vars=pubmed_full.columns[0:9])
+pubmed_full_pivot = pd.melt(pubmed_full, value_vars=pubmed_full.columns[8:len(pubmed_full.columns)+1], id_vars=pubmed_full.columns[0:8])
 
+pubmed_full_pivot.drop(pubmed_full_pivot[pubmed_full_pivot.value< 1].index)
 
 pubmed_full_pivot.to_csv('test.csv', sep= ';')
