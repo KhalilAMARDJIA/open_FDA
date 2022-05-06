@@ -1,9 +1,9 @@
 
 import pandas as pd
-from collections import Counter
 import plotly.express as px
 import re
-data = pd.read_csv("event_data.csv", sep="|")
+
+data = pd.read_csv("event_data.csv", sep=";", index_col = 0)
 data = data.dropna()
 
 
@@ -46,4 +46,7 @@ for col in product_p_matrix.columns:
 
 pubmed_full = pd.concat([data, patient_p_matrix, product_p_matrix], axis=1, join='inner')
 
-pubmed_full.to_csv('test.csv', sep= '|')
+pubmed_full_pivot = pd.melt(pubmed_full, value_vars=pubmed_full.columns[9:len(pubmed_full.columns)+1], id_vars=pubmed_full.columns[0:9])
+
+
+pubmed_full_pivot.to_csv('test.csv', sep= ';')
