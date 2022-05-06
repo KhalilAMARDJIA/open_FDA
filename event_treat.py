@@ -1,10 +1,8 @@
-
-
 import pandas as pd
 import plotly.express as px
 import re
 
-data = pd.read_csv("event_data.csv", sep=";", index_col = 0)
+data = pd.read_csv("event_data.csv", sep="|", index_col = 0)
 data = data.dropna()
 
 
@@ -46,9 +44,25 @@ for col in product_p_matrix.columns:
 
 
 pubmed_full = pd.concat([data, patient_p_matrix, product_p_matrix], axis=1, join='inner')
-
 pubmed_full_pivot = pd.melt(pubmed_full, value_vars=pubmed_full.columns[8:len(pubmed_full.columns)+1], id_vars=pubmed_full.columns[0:8])
+pubmed_full_pivot = pubmed_full_pivot.drop(pubmed_full_pivot[pubmed_full_pivot.value< 1].index)
 
-pubmed_full_pivot.drop(pubmed_full_pivot[pubmed_full_pivot.value< 1].index)
+pubmed_full_pivot.pivot_table()
 
-pubmed_full_pivot.to_csv('test.csv', sep= ';')
+plot_1 = pubmed_full_pivot.groupby(['variable', 'manufacturer_d_name']).agg({'value': 'sum'}).sort_values('value').reset_index()
+
+
+
+fig = px.bar(
+    template='simple_white',
+    x='value',
+    y = 'variable',
+    color='manufacturer_d_name',
+    color_discrete_sequence=px.colors.sequential.Cividis,
+    data_frame=plot_1,
+    title=f'openFDA reports'
+)
+
+fig.update_traces(marker_line_color='black', marker_line_width=1)
+fig.update_layout(font_family="Courier New")
+fig.write_html("./plots/test.html", auto_open=True)
