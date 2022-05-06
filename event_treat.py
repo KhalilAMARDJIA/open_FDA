@@ -47,7 +47,7 @@ pubmed_full = pd.concat([data, patient_p_matrix, product_p_matrix], axis=1, join
 
 pubmed_full_pivot = pd.melt(pubmed_full, value_vars=pubmed_full.columns[8:len(pubmed_full.columns)+1], id_vars=pubmed_full.columns[0:8])
 
-filter = (pubmed_full_pivot['value'] > 0)
+filter = pubmed_full_pivot['value'] > 0
 
 pubmed_full_pivot = pubmed_full_pivot[filter]
 
@@ -62,7 +62,8 @@ for event in plot_1.variable:
     else:
         event_type.append('Product problem')
 plot_1['event_type'] = event_type
-plot_1 = plot_1.sort_values(by = ['event_type', 'value'], ascending = [False, False], na_position = 'first')
+plot_1 = plot_1.sort_values(by = ['value', 'event_type'], ascending = [False, False], na_position = 'first')
+
 
 fig = px.bar(
     template='simple_white',
