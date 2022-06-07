@@ -1,0 +1,177 @@
+{
+    "complications": {
+        "Adverse event per ISO 11979-7:2018 (Table E.2)": {
+            "Cumulative: Cystoid Macular Edema": [
+                "Cystoid Macular Edema",
+                "Cystoid Macular Oedema",
+                "(CME)",
+                " CME "
+            ],
+            "Cumulative: Hypopyon": [
+                "Hypopyon",
+                "Pus in anterior chamber"
+            ],
+            "Cumulative: Endophthalmitis": [
+                "Endophthalmitis",
+                "Endophthalmitides"
+            ],
+            "Cumulative: Lens dislocated from posterior chamber": [
+                "Lens Decentration",
+                "Lens Dislocation",
+                "Lens Migration",
+                "Lens Displacement"
+            ],
+            "Cumulative: Pupillary block": [
+                "Pupillary block"
+            ],
+            "Cumulative: Retinal detachment": [
+                "Retinal detachment",
+                "Detachment of the retina"
+            ],
+            "Persistent: Corneal stroma oedema": [
+                "Corneal stroma oedema",
+                "Corneal stroma edema",
+                "Corneal edema",
+                "Corneal oedema",
+                "stroma oedema",
+                "stroma edema"
+            ],
+            "Persistent: Cystoid macular oedema": [
+                "Cystoid macular oedema",
+                "Cystoid macular edema"
+            ],
+            "Persistent: Iritis/Iridocyclitis": [
+                "Iritis",
+                "Inflammation of the iris",
+                "Iris inflammation",
+                "Iridocyclitis"
+            ],
+            "Persistent: Intraocular Pressure Elevation": [
+                "Intraocular Pressure Elevation",
+                "IOP Elevation",
+                "Intraocular Pressure increase",
+                "IOP increase"
+            ]
+        },
+        "Posterior Capsule Opacification (PCO)": {
+            "Posterior Capsule Opacification (PCO)": [
+                "Posterior Capsule Opacification",
+                " PCO ",
+                "(PCO)"
+            ]
+        },
+        "Uveitis-Glaucoma-Hyphema Syndrome": {
+            "Uveitis-Glaucoma-Hyphema Syndrome": [
+                "Uveitis-glaucoma-hyphema",
+                "Uveitis glaucoma hyphema",
+                " UGH ",
+                "(UGH)"
+            ]
+        },
+        "Refractive Surprises": {
+            "Refractive surprise": [
+                "Refractive surprise"
+            ],
+            "Wrong Lens": [
+                "Wrong Lens",
+                "Incorrect labelling",
+                "Labelling error"
+            ],
+            "Biometric measurement errors": [
+                "Measurement errors"
+            ]
+        },
+        "Descemet Membrane Tears or Detachment": {
+            "Descemet Membrane Tears or Detachment": [
+                "Descemet Membrane Tears",
+                "Descemet Membrane Detachment",
+                "Haab's striae",
+                "Haab striae"
+            ]
+        },
+        "Optical Aberrations": {
+            "Negative dysphotopsia": [
+                "Negative dysphotopsia"
+            ],
+            "Positive dysphotopsia": [
+                "positive dysphotopsia"
+            ],
+            "Glistening": [
+                "Glistening"
+            ],
+            "Halo": [
+                "halo"
+            ],
+            "Starburst": [
+                "starburst"
+            ],
+            "Glare": [
+                "glare"
+            ],
+            "Vision blurred": [
+                "Vision blurred",
+                "blurred vision"
+            ],
+            "Optical Aberration": [
+                "Optical Aberration"
+            ],
+            "scotoma": [
+                "scotoma"
+            ],
+            "Photic phenomena": [
+                "Photic phenomena"
+            ]
+        },
+        "Posterior Capsular Rupture": {
+            "Posterior Capsular Rupture": [
+                "Posterior Capsular Rupture",
+                " PCR ",
+                "(PCR)"
+            ],
+            "Anterior capsular contraction": [
+                "Anterior capsular contraction"
+            ]
+        },
+        "Vitreous/Suprachoroidal Hemorrhage": {
+            "Suprachoroidal Hemorrhage": [
+                "Suprachoroidal Hemorrhage"
+            ],
+            "Vitreous Hemorrhage": [
+                "Vitreous Hemorrhage"
+            ]
+        },
+        "Toxic Anterior Segment Syndrome": {
+            "Toxic Anterior Segment Syndrome": [
+                "Toxic Anterior Segment Syndrome",
+                " TASS ",
+                "(TASS)"
+            ]
+        },
+        "Vitreous Detachment": {
+            "Vitreous Detachment": [
+                "Vitreous Detachment",
+                " PVD ",
+                "(PVD)"
+            ]
+        },
+        "Other AE": {
+            "Pupillary capture": [
+                "Pupillary capture"
+            ],
+            "Allergic reaction": [
+                "Allergy",
+                "Allergic"
+            ],
+            "Headache": [
+                "Headache"
+            ],
+            "Intraocular lens opacification": [
+                "Intraocular lens opacification",
+                "IOL opacification"
+            ],
+            "Anterior chamber flare": [
+                "Anterior chamber flare"
+            ]
+        }
+    }
+}
