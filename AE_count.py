@@ -68,3 +68,12 @@ fig.update_traces(marker_line_color='black', marker_line_width=1)
 fig.update_layout(font_family="JetBrainsMono NF")
 
 fig.write_html("./plots/complications.html", auto_open=True)
+
+
+
+t_complication_matrix = complication_matrix.transpose()
+
+event_full = pd.concat([pubmed_raw_data, t_complication_matrix], axis=1, join="inner")
+event_full = pubmed_full[pubmed_full.columns.drop(list(pubmed_full.filter(regex='Unnamed')))]
+event_full.to_csv("./saved_csv/event_full.csv", sep = ";")
+
