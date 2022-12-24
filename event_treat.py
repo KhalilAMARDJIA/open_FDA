@@ -2,7 +2,7 @@ import pandas as pd
 import plotly.express as px
 import re
 
-data = pd.read_csv("event_data.csv", sep="|", index_col=0)
+data = pd.read_csv("saved_csv/event_data.csv", sep="|", index_col=0)
 data = data.dropna()
 
 

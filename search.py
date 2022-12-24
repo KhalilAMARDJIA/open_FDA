@@ -27,7 +27,7 @@ def main():
 
    df = pd.DataFrame(df)
 
-   csv_name = f'{database}_data.csv'
+   csv_name = f'saved_csv/{database}_data.csv'
    df.to_csv(csv_name, sep= '|', encoding= 'UTF-8')
 
 if __name__ == "__main__":

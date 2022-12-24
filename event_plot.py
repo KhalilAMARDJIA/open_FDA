@@ -3,13 +3,13 @@ import pandas as pd
 from collections import Counter
 import plotly.express as px
 
-data = pd.read_csv("event_data.csv", sep="|")
+data = pd.read_csv("saved_csv/event_data.csv", sep="|")
 data = data.dropna()
 
 
 fig = px.bar(
     template='simple_white',
-    x='manufacturer_d_name',
+    x='manufacturer_g1_name',
     color='brand_name',
     color_discrete_sequence=px.colors.sequential.Cividis,
     data_frame=data,

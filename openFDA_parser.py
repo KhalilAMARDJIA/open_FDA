@@ -24,7 +24,7 @@ def parser_event(data):
         df['device_name'].append(device_field.get('openfda').get('device_name'))
 
         df['product_problems'].append(record.get('product_problems'))
-        df['patient_problems'].append(record.get('patient_problems'))
+        df['patient_problems'].append(record.get('patient')[0].get('patient_problems'))
 
 
         try: 

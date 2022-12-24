@@ -5,7 +5,7 @@ from medspacy.visualization import visualize_ent
 import pandas as pd
 nlp = medspacy.load()
 
-df = pd.read_csv("event_data.csv", sep = "|")
+df = pd.read_csv("saved_csv/event_data.csv", sep = "|")
 text = df.text
 
 target_matcher = nlp.get_pipe("medspacy_target_matcher")
