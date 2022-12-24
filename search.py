@@ -20,6 +20,8 @@ def main():
       df = openFDA_parser.parser_510k(data= data)
    elif database == 'udi':
       df = openFDA_parser.parser_udi(data= data)
+   elif database == 'recall':
+      df = openFDA_parser.parser_recalls(data = data)
    else:
       print(f'the {database} is not supported by openFDA_parser')
 

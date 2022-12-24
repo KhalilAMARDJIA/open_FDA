@@ -149,3 +149,32 @@ def parser_udi(data):
           'public_version_date': public_version_date
           }
     return df
+
+def parser_recalls(data):
+    df = {
+        'event_date_created' :[],
+        'recall_status' :[],
+        'recalling_firm' :[],
+        'product_code' :[],
+        'root_cause_description' : [],
+        'product_description' : [],
+        'action' : [],
+        # openfda field
+        'device_name' : [],
+        'medical_specialty_description' : []
+    }
+
+    for record in data:
+        df['event_date_created'].append(record.get('event_date_created'))
+        df['recall_status'].append(record.get('recall_status'))
+        df['recalling_firm'].append(record.get('recalling_firm'))
+        df['product_code'].append(record.get('product_code'))
+        df['root_cause_description'].append(record.get('root_cause_description'))
+        df['product_description'].append(record.get('product_description'))
+        df['action'].append(record.get('action'))
+
+        openfda_field = record.get('openfda')
+        df['device_name'].append(openfda_field.get('device_name'))
+        df['medical_specialty_description'].append(openfda_field.get('medical_specialty_description'))
+    return df
+
