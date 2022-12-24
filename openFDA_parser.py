@@ -97,7 +97,6 @@ def parser_udi(data):
 
         df['public_version_date'].append(record.get('public_version_date'))
 
-
     return df
 
 def parser_recalls(data):
