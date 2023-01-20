@@ -3,8 +3,8 @@ import pandas as pd
 import re
 import plotly.express as px
     
-# fetch data from PubMed
-pubmed_raw_data = pd.read_csv('saved_csv/event_data.csv', sep = "|")
+# fetch data from openFDA
+fda_raw_data = pd.read_csv('event_data.csv', sep = "|")
 
 # open complications database
 with open('./databases/complications_db.json') as file:
@@ -27,7 +27,7 @@ for complication in complications_db['complications']:
                 search_or_syno = search_or_syno.replace("(", "\(")
                 search_or_syno = search_or_syno.replace(")", "\)")
 
-                complications_matrix[AE] = pubmed_raw_data.text.str.count(
+                complications_matrix[AE] = fda_raw_data.text.str.count(
                     search_or_syno, flags=re.IGNORECASE)
             except:
                 pass
@@ -53,16 +53,15 @@ complication_matrix_plot = complication_matrix_plot.sort_values([
                                                                 'main_cat', 'n'])
 complication_matrix_plot = complication_matrix_plot[complication_matrix_plot.n > 0]
 
-fig = px.bar(
-    data_frame=complication_matrix_plot,
-    template='simple_white',
-    x='n',
-    y='complication',
-    color='main_cat',
-    color_discrete_sequence=px.colors.diverging.curl,
-    title= f'PubMed data extracted from {len(pubmed_raw_data)} texts'
-)
-
+fig = px.bar(data_frame=complication_matrix_plot,
+             template='simple_white',
+             x='n',
+             y='complication',
+             color='main_cat',
+             labels={'n':'Occurrences'},
+             color_discrete_sequence=px.colors.diverging.curl,
+             text='n',
+             title= f'Complications found in {complication_matrix_plot["n"].sum()} texts, {len(fda_raw_data)-complication_matrix_plot["n"].sum()} texts were excluded for missing data')
 
 fig.update_traces(marker_line_color='black', marker_line_width=1)
 fig.update_layout(font_family="JetBrainsMono NF")
@@ -73,7 +72,6 @@ fig.write_html("./plots/complications.html", auto_open=True)
 
 t_complication_matrix = complication_matrix.transpose()
 
-event_full = pd.concat([pubmed_raw_data, t_complication_matrix], axis=1, join="inner")
+event_full = pd.concat([fda_raw_data, t_complication_matrix], axis=1, join="inner")
 event_full = event_full[event_full.columns.drop(list(event_full.filter(regex='Unnamed')))]
 event_full.to_csv("./saved_csv/event_full.csv", sep = ";")
-
