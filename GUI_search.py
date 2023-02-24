@@ -49,6 +49,7 @@ class Window(QMainWindow):
         self.date2 = QDateEdit(self)
         self.date2.setDisplayFormat('yyyy-MM-dd')
         self.date2.move(200, 110)
+        self.date2.setDate(QDate.currentDate())  # set the default date to the current date
 
         self.button1 = QPushButton('Search', self)
         self.button1.clicked.connect(self.main)
@@ -91,7 +92,7 @@ class Window(QMainWindow):
         df.to_csv(csv_name, sep='|', encoding='UTF-8')
 
         # show message box
-        QMessageBox.information(self, "Search Completed", f"Search for '{query}' in {database} database is completed.")
+        QMessageBox.information(self, "Search Completed", f"Search for openFDA '{query}' in {database} database is completed.")
 
 
 App = QApplication(sys.argv)
