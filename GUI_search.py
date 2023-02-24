@@ -1,100 +1,93 @@
+# Import necessary modules
 import sys
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt, QDate
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QComboBox, QDateEdit, QPushButton, QMessageBox
+from general_openFDA import general_json  # custom module
+import openFDA_parser  # custom module
+import pandas as pd
 
+# Define the main window class
 class Window(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.title = 'Search Database'
-        self.left = 700
-        self.top = 50
-        self.width = 1000
-        self.height = 300
+        # Set window properties
+        self.setWindowTitle('Search Database')
+        self.setGeometry(700, 50, 1000, 300)
 
-        self.UI()
+        # Add query label and text box
+        self.query_label = QLabel('Query', self)
+        self.query_label.move(20, 20)
+        self.query_text = QLineEdit(self)
+        self.query_text.setPlaceholderText('')
+        self.query_text.move(80, 20)
+        self.query_text.resize(900, 22)
 
-    def UI(self):
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
+        # Add database label and combo box
+        self.database_label = QLabel('Database', self)
+        self.database_label.move(20, 50)
+        self.database_combo = QComboBox(self)
+        self.database_combo.addItems(['event', '510k', 'udi', 'recall'])
+        self.database_combo.move(80, 50)
+        self.database_combo.resize(260,22)
 
-        self.label1 = QLabel('Query', self)
-        self.label1.move(20, 20)
+        # Add date labels and pickers
+        self.from_date_label = QLabel('From Date (YYYY-MM-DD)', self)
+        self.from_date_label.move(20, 80)
+        self.from_date_picker = QDateEdit(self)
+        self.from_date_picker.setDisplayFormat('yyyy-MM-dd')
+        self.from_date_picker.move(200, 80)
+        self.to_date_label = QLabel('To Date (YYYY-MM-DD)', self)
+        self.to_date_label.move(20, 110)
+        self.to_date_picker = QDateEdit(self)
+        self.to_date_picker.setDisplayFormat('yyyy-MM-dd')
+        self.to_date_picker.move(200, 110)
+        self.to_date_picker.setDate(QDate.currentDate())  # set the default date to the current date
 
-        self.text1 = QLineEdit(self)
-        self.text1.setPlaceholderText('')
-        self.text1.move(80, 20)
-        self.text1.resize(900, 22)
+        # Add search button
+        self.search_button = QPushButton('Search', self)
+        self.search_button.clicked.connect(self.search)
+        self.search_button.move(100, 150)
 
-        self.label2 = QLabel('Database', self)
-        self.label2.move(20, 50)
-
-        dblist = ['event', '510k', 'udi', 'recall', 'enforcement', 'registrationlisting', 'classification']
-
-        self.combo1 = QComboBox(self)
-        self.combo1.addItems(dblist)
-        self.combo1.move(80, 50)
-        self.combo1.resize(260,22)
-
-        self.label3 = QLabel('From Date (YYYY-MM-DD)', self)
-        self.label3.move(20, 80)
-
-        self.date1 = QDateEdit(self)
-        self.date1.setDisplayFormat('yyyy-MM-dd')
-        self.date1.move(200, 80)
-
-        self.label4 = QLabel('To Date (YYYY-MM-DD)', self)
-        self.label4.move(20, 110)
-
-        self.date2 = QDateEdit(self)
-        self.date2.setDisplayFormat('yyyy-MM-dd')
-        self.date2.move(200, 110)
-        self.date2.setDate(QDate.currentDate())  # set the default date to the current date
-
-        self.button1 = QPushButton('Search', self)
-        self.button1.clicked.connect(self.main)
-        self.button1.move(100, 150)
-        
+        # Show the window
         self.show()
 
-
-    def main(self):
-        query = self.text1.text()
+    def search(self):
+        # Get user inputs from the GUI
+        query = self.query_text.text()
         search = query.replace(" ", "+AND+")
-        database = self.combo1.currentText()
-        from_date = self.date1.date().toString('yyyy-MM-dd')
-        to_date = self.date2.date().toString('yyyy-MM-dd')
+        database = self.database_combo.currentText()
+        from_date = self.from_date_picker.date().toString(Qt.ISODate)
+        to_date = self.to_date_picker.date().toString(Qt.ISODate)
 
+        # If date range is specified, add it to the search query
         if from_date and to_date:
             date_filter = f'+AND+date_received:[{from_date}+TO+{to_date}]'
             search += date_filter
 
-        from general_openFDA import general_json
-        import openFDA_parser
-        import pandas as pd
+        # Get the parser function for the selected database
+        parser_functions = {
+            'event': openFDA_parser.parser_event,
+            '510k': openFDA_parser.parser_510k,
+            'udi': openFDA_parser.parser_udi,
+            'recall': openFDA_parser.parser_recalls,
+        }
+        parser_func = parser_functions.get(database)
+
+        if parser_func is None:
+            QMessageBox.critical(self, "Error", f"The {database} database is not supported by openFDA_parser")
+            return
 
         data, database = general_json(query=search, database=database)
-
-        if database == 'event':
-            df = openFDA_parser.parser_event(data=data)
-        elif database == '510k':
-            df = openFDA_parser.parser_510k(data=data)
-        elif database == 'udi':
-            df = openFDA_parser.parser_udi(data=data)
-        elif database == 'recall':
-            df = openFDA_parser.parser_recalls(data=data)
-        else:
-            print(f'the {database} is not supported by openFDA_parser')
-
+        df = parser_func(data=data)
         df = pd.DataFrame(df)
 
         csv_name = f'saved_csv/{database}_data.csv'
         df.to_csv(csv_name, sep='|', encoding='UTF-8')
 
-        # show message box
         QMessageBox.information(self, "Search Completed", f"Search for openFDA '{query}' in {database} database is completed.")
 
-
-App = QApplication(sys.argv)
-Window = Window()
-sys.exit(App.exec())
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = Window()
+    sys.exit(app.exec_())
