@@ -24,8 +24,10 @@ def parser_event(data):
         df['device_name'].append(device_field.get('openfda').get('device_name'))
 
         df['product_problems'].append(record.get('product_problems'))
-        df['patient_problems'].append(record.get('patient')[0].get('patient_problems'))
-
+        try:
+            df['patient_problems'].append(record.get('patient')[0].get('patient_problems'))
+        except:
+            df['patient_problems'].append('')
 
         try: 
             mdr_text_0 = record['mdr_text'][0]['text']
@@ -126,4 +128,3 @@ def parser_recalls(data):
         df['device_name'].append(openfda_field.get('device_name'))
         df['medical_specialty_description'].append(openfda_field.get('medical_specialty_description'))
     return df
-
