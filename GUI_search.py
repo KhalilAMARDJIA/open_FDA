@@ -62,7 +62,7 @@ class Window(QMainWindow):
 
         # If date range is specified, add it to the search query
         if from_date and to_date:
-            date_filter = f'+AND+date_received:[{from_date}+TO+{to_date}]'
+            date_filter = f'+AND+[{from_date}+TO+{to_date}]'
             search += date_filter
 
         # Get the parser function for the selected database

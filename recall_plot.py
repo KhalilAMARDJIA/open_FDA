@@ -22,12 +22,14 @@ fig.write_html("./plots/recalled devices.html", auto_open=True)
 
 fig = px.bar(
     template='simple_white',
-    x = 'device_name',
-    color= 'root_cause_description',
+    y='device_name',
+    color='root_cause_description',
     color_discrete_sequence=px.colors.sequential.Cividis,
     data_frame=data,
+    orientation='h',
     title=f'openFDA patient problems from {len(data)} reports'
 )
+
 fig.update_traces(marker_line_color='black', marker_line_width=1)
 fig.update_layout(font_family="Courier New")
 fig.write_html("./plots/recall root cause.html", auto_open=True)
