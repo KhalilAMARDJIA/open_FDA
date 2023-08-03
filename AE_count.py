@@ -4,7 +4,7 @@ import re
 import plotly.express as px
     
 # fetch data from openFDA
-fda_raw_data = pd.read_csv('saved_csv\event_data.csv', sep = "|")
+fda_raw_data = pd.read_csv('saved_csv/event_data.csv', sep = "|")
 
 # open complications database
 with open('./databases/complications_db.json') as file:
