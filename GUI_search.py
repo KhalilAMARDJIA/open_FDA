@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
-import time
 
 from general_openFDA import general_json
 import openFDA_parser
@@ -50,9 +49,10 @@ if search_button:
 
     df, saved_database, last_updated, n_results = search_data(query, database, from_date, to_date)
 
-    st.success(f"Search for openFDA '{query}' in {saved_database} database is completed.")
-    st.write(f"Last Updated: {last_updated}")
-    st.write(f"Number of Results: {n_results}")
+    st.success(f"""Search for openFDA in {saved_database} database is completed.\n
+               Last Updated: {last_updated}\n
+               Number of Results: {n_results}
+               """)
     st.download_button(label="Download CSV", data=df.to_csv(index=False), key='download_csv')
     
     # Store the DataFrame in session state
@@ -60,16 +60,21 @@ if search_button:
 
 # Display the main window
 st.sidebar.write("[Go back to Search Page](#settings)")
-st.write("## Main Window")
-st.write("This is the main content area where you can display information or results.")
 
-# Auto-refreshing Plotly plot
+
 if st.session_state.df is not None:
-    st.write("## Auto-Refreshing Plot")
     st.subheader("Select Columns for Plotting")
 
-    x_column = st.selectbox('X-axis', st.session_state.df.columns)
-    y_column = st.selectbox('Y-axis', st.session_state.df.columns)
+    # Determine available columns based on the selected database
+    if database == 'event':
+        available_columns = st.session_state.df.columns  # Adjust this based on your DataFrame columns
+    elif database == '510k':
+        available_columns = st.session_state.df.columns  # Adjust this based on your DataFrame columns
+    else:
+        available_columns = []  # No columns available for other databases
+    
+    x_column = st.selectbox('X-axis', available_columns)
+    y_column = st.selectbox('Y-axis', available_columns)
 
     st.subheader("Sample Plot")
 
