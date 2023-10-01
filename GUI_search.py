@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
+import time
 
 from general_openFDA import general_json
 import openFDA_parser
@@ -17,6 +18,13 @@ def search_data(query, database, from_date, to_date):
 st.set_page_config(layout="wide")
 st.title('Search openFDA Database')
 st.sidebar.title('Settings')
+
+# Initialize session state
+if 'df' not in st.session_state:
+    st.session_state.df = None
+
+if 'plot_container' not in st.session_state:
+    st.session_state.plot_container = None
 
 # Add query input
 query = st.sidebar.text_input('Query', '')
@@ -46,8 +54,36 @@ if search_button:
     st.write(f"Last Updated: {last_updated}")
     st.write(f"Number of Results: {n_results}")
     st.download_button(label="Download CSV", data=df.to_csv(index=False), key='download_csv')
+    
+    # Store the DataFrame in session state
+    st.session_state.df = df
 
 # Display the main window
 st.sidebar.write("[Go back to Search Page](#settings)")
 st.write("## Main Window")
 st.write("This is the main content area where you can display information or results.")
+
+# Auto-refreshing Plotly plot
+if st.session_state.df is not None:
+    st.write("## Auto-Refreshing Plot")
+    st.subheader("Select Columns for Plotting")
+
+    x_column = st.selectbox('X-axis', st.session_state.df.columns)
+    y_column = st.selectbox('Y-axis', st.session_state.df.columns)
+
+    st.subheader("Sample Plot")
+
+    # Check if both x_column and y_column are selected
+    if x_column and y_column:
+
+        # Create a new plot container and remove the old one
+        if st.session_state.plot_container:
+            st.session_state.plot_container.empty()
+        
+        # Create the plot using the data from session state
+        fig = px.bar(st.session_state.df, x=x_column, y=y_column, title=f'{x_column} vs {y_column}')
+        st.session_state.plot_container = st.empty()
+        st.session_state.plot_container.plotly_chart(fig)
+
+    else:
+        st.warning("Plotting is not available for the selected database.")
