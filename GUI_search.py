@@ -1,4 +1,3 @@
-import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -101,19 +100,26 @@ if st.session_state.df is not None:
         available_columns = []  # No columns available for other databases
     
     x_column = st.selectbox('X-axis', available_columns)
-    y_column = st.selectbox('Y-axis', available_columns)
 
     st.subheader("Sample Plot")
 
-    # Check if both x_column and y_column are selected
-    if x_column and y_column:
+    # TODO: there is still an error with lists such as patient_problems, to be corrected
 
-        # Create a new plot container and remove the old one
-        if st.session_state.plot_container:
-            st.session_state.plot_container.empty()
-        
-        # Create the plot using the data from session state
-        fig = px.bar(st.session_state.df, x=x_column, y=y_column, title=f'{x_column} vs {y_column}')
+    # Check if both x_column is selected
+    if x_column:
+
+        # Group the data by the selected x_column and calculate the count.
+
+        # Flatten the lists
+        grouped_df = st.session_state.df.groupby(x_column).size().reset_index(name='Count')
+        st.write(grouped_df)
+        # Convert all grouped_df values to strings
+        grouped_df[x_column] = grouped_df[x_column].astype(str)
+
+        # Create the bar chart using the grouped data
+        fig = px.bar(grouped_df, x= 'Count', y=x_column)
+        fig.update_traces(marker_line_color='black', marker_line_width=1)
+        fig.update_layout(font_family="Courier New")
         st.session_state.plot_container = st.empty()
         st.session_state.plot_container.plotly_chart(fig)
 
