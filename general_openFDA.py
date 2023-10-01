@@ -59,9 +59,7 @@ def general_json(query, database='event'):
     n_results = meta_data['results']['total']
     raw_data = urls_to_json(urls)
 
-    print(f'From the {database} last updated in: {last_updated} with: {n_results} results')
-
     with open('openFDA_raw_data.json', 'w') as f:
         json.dump(raw_data, f, indent=5)
 
-    return raw_data, database
+    return raw_data, database, last_updated, n_results

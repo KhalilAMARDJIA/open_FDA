@@ -1,93 +1,53 @@
-# Import necessary modules
-import sys
-from PyQt5.QtCore import Qt, QDate
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QLineEdit, QComboBox, QDateEdit, QPushButton, QMessageBox
-from general_openFDA import general_json  # custom module
-import openFDA_parser  # custom module
+import streamlit as st
 import pandas as pd
+import plotly.express as px
+from datetime import datetime, timedelta
 
-# Define the main window class
-class Window(QMainWindow):
-    def __init__(self):
-        super().__init__()
+from general_openFDA import general_json
+import openFDA_parser
 
-        # Set window properties
-        self.setWindowTitle('Search Database')
-        self.setGeometry(700, 50, 1000, 300)
+# Define the search_data function without caching
+def search_data(query, database, from_date, to_date):
+    data, database, last_updated, n_results = general_json(query=query, database=database)
+    df = openFDA_parser.parser_event(data=data)
+    df = pd.DataFrame(df)
+    return df, database, last_updated, n_results
 
-        # Add query label and text box
-        self.query_label = QLabel('Query', self)
-        self.query_label.move(20, 20)
-        self.query_text = QLineEdit(self)
-        self.query_text.setPlaceholderText('')
-        self.query_text.move(80, 20)
-        self.query_text.resize(900, 22)
+# Set Streamlit app title and layout
+st.set_page_config(layout="wide")
+st.title('Search openFDA Database')
+st.sidebar.title('Settings')
 
-        # Add database label and combo box
-        self.database_label = QLabel('Database', self)
-        self.database_label.move(20, 50)
-        self.database_combo = QComboBox(self)
-        self.database_combo.addItems(['event', '510k', 'udi', 'recall'])
-        self.database_combo.move(80, 50)
-        self.database_combo.resize(260,22)
+# Add query input
+query = st.sidebar.text_input('Query', '')
+if not query:
+    st.warning('Please enter a query.')
+    st.stop()
 
-        # Add date labels and pickers
-        self.from_date_label = QLabel('From Date (YYYY-MM-DD)', self)
-        self.from_date_label.move(20, 80)
-        self.from_date_picker = QDateEdit(self)
-        self.from_date_picker.setDisplayFormat('yyyy-MM-dd')
-        self.from_date_picker.move(200, 80)
-        self.to_date_label = QLabel('To Date (YYYY-MM-DD)', self)
-        self.to_date_label.move(20, 110)
-        self.to_date_picker = QDateEdit(self)
-        self.to_date_picker.setDisplayFormat('yyyy-MM-dd')
-        self.to_date_picker.move(200, 110)
-        self.to_date_picker.setDate(QDate.currentDate())  # set the default date to the current date
+# Add database selection
+database = st.sidebar.selectbox('Database', ['event', '510k', 'udi', 'recall'])
 
-        # Add search button
-        self.search_button = QPushButton('Search', self)
-        self.search_button.clicked.connect(self.search)
-        self.search_button.move(100, 150)
+# Add date range selection
+from_date = st.sidebar.date_input('From Date (YYYY-MM-DD)', datetime.today() - timedelta(days=365.25*5))
+to_date = st.sidebar.date_input('To Date (YYYY-MM-DD)', datetime.today())
 
-        # Show the window
-        self.show()
+# Add search button
+search_button = st.sidebar.button('Search')
 
-    def search(self):
-        # Get user inputs from the GUI
-        query = self.query_text.text()
-        search = query.replace(" ", "+AND+")
-        database = self.database_combo.currentText()
-        from_date = self.from_date_picker.date().toString(Qt.ISODate)
-        to_date = self.to_date_picker.date().toString(Qt.ISODate)
+if search_button:
+    # If date range is specified, add it to the search query
+    if from_date and to_date:
+        date_filter = f'+AND+[{from_date.strftime("%Y-%m-%d")}+TO+{to_date.strftime("%Y-%m-%d")}]'
+        query += date_filter
 
-        # If date range is specified, add it to the search query
-        if from_date and to_date:
-            date_filter = f'+AND+[{from_date}+TO+{to_date}]'
-            search += date_filter
+    df, saved_database, last_updated, n_results = search_data(query, database, from_date, to_date)
 
-        # Get the parser function for the selected database
-        parser_functions = {
-            'event': openFDA_parser.parser_event,
-            '510k': openFDA_parser.parser_510k,
-            'udi': openFDA_parser.parser_udi,
-            'recall': openFDA_parser.parser_recalls,
-        }
-        parser_func = parser_functions.get(database)
+    st.success(f"Search for openFDA '{query}' in {saved_database} database is completed.")
+    st.write(f"Last Updated: {last_updated}")
+    st.write(f"Number of Results: {n_results}")
+    st.download_button(label="Download CSV", data=df.to_csv(index=False), key='download_csv')
 
-        if parser_func is None:
-            QMessageBox.critical(self, "Error", f"The {database} database is not supported by openFDA_parser")
-            return
-
-        data, database = general_json(query=search, database=database)
-        df = parser_func(data=data)
-        df = pd.DataFrame(df)
-
-        csv_name = f'saved_csv/{database}_data.csv'
-        df.to_csv(csv_name, sep='|', encoding='UTF-8')
-
-        QMessageBox.information(self, "Search Completed", f"Search for openFDA '{query}' in {database} database is completed.")
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = Window()
-    sys.exit(app.exec_())
+# Display the main window
+st.sidebar.write("[Go back to Search Page](#settings)")
+st.write("## Main Window")
+st.write("This is the main content area where you can display information or results.")

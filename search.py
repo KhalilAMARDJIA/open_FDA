@@ -11,7 +11,7 @@ def main():
    database = input(
       "choose database from (event, 510k, udi, recall, enforcement, registrationlisting, classification): ")
 
-   data, database = general_json(query = search, database = database)
+   data, database, last_updated, n_results = general_json(query = search, database = database)
 
 
    if database == 'event':

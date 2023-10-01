@@ -18,10 +18,13 @@ def parser_event(data):
         df['report_number'].append(record.get('report_number'))
         df['manufacturer_g1_name'].append(record.get('manufacturer_g1_name'))
         df['date_received'].append(record.get('date_received'))
-
-        device_field = record.get('device')[0]
-        df['brand_name'].append(device_field.get('brand_name'))
-        df['device_name'].append(device_field.get('openfda').get('device_name'))
+        try:
+            device_field = record.get('device')[0]
+            df['brand_name'].append(device_field.get('brand_name'))
+            df['device_name'].append(device_field.get('openfda').get('device_name'))
+        except:
+            df['brand_name'].append('')
+            df['device_name'].append('')
 
         df['product_problems'].append(record.get('product_problems'))
         try:
