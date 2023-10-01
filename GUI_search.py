@@ -9,7 +9,16 @@ import openFDA_parser
 # Define the search_data function without caching
 def search_data(query, database, from_date, to_date):
     data, database, last_updated, n_results = general_json(query=query, database=database)
-    df = openFDA_parser.parser_event(data=data)
+    if database == 'event':
+        df = openFDA_parser.parser_event(data=data)
+    elif database == '510k':
+        df = openFDA_parser.parser_510k(data=data)
+    elif database == 'udi':
+        df = openFDA_parser.parser_udi(data=data)
+    elif database == 'recall':
+        df = openFDA_parser.parser_recalls(data=data)    
+    else:
+        df = pd.DataFrame()  # Placeholder for other databases
     df = pd.DataFrame(df)
     return df, database, last_updated, n_results
 
@@ -49,9 +58,13 @@ if search_button:
 
     df, saved_database, last_updated, n_results = search_data(query, database, from_date, to_date)
 
-    st.success(f"""Search for openFDA in {saved_database} database is completed.\n
-               Last Updated: {last_updated}\n
+    st.success(f"""
+               Search for openFDA in {saved_database} database is completed.
+               
+               Last Updated: {last_updated}
+
                Number of Results: {n_results}
+
                """)
     st.download_button(label="Download CSV", data=df.to_csv(index=False), key='download_csv')
     
@@ -67,9 +80,13 @@ if st.session_state.df is not None:
 
     # Determine available columns based on the selected database
     if database == 'event':
-        available_columns = st.session_state.df.columns  # Adjust this based on your DataFrame columns
+        available_columns = st.session_state.df.columns
     elif database == '510k':
-        available_columns = st.session_state.df.columns  # Adjust this based on your DataFrame columns
+        available_columns = st.session_state.df.columns
+    elif database == 'udi':
+        available_columns = st.session_state.df.columns
+    elif database == 'recall':
+        available_columns = st.session_state.df.columns
     else:
         available_columns = []  # No columns available for other databases
     
