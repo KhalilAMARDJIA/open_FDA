@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -58,6 +59,14 @@ if search_button:
 
     df, saved_database, last_updated, n_results = search_data(query, database, from_date, to_date)
 
+    csv_path = f'saved_csv/{database}_data.csv'
+
+    try:
+        df.to_csv(csv_path, sep='|', encoding='UTF-8')
+        st.success("CSV file saved successfully.")
+    except Exception as e:
+        st.error(f"Error saving CSV file: {str(e)}")
+
     st.success(f"""
                Search for openFDA in {saved_database} database is completed.
                
@@ -70,6 +79,7 @@ if search_button:
     
     # Store the DataFrame in session state
     st.session_state.df = df
+
 
 # Display the main window
 st.sidebar.write("[Go back to Search Page](#settings)")
