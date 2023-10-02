@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 from datetime import datetime, timedelta
-
+import subprocess
 from general_openFDA import general_json
 import openFDA_parser
+import sys
 
 # Define the search_data function without caching
 def search_data(query, database, from_date, to_date):
@@ -79,49 +79,17 @@ if search_button:
     # Store the DataFrame in session state
     st.session_state.df = df
 
+# Function to execute event_plot.py
+def execute_event_plot():
+    virtualenv_python = sys.executable  # Get the path to the currently running Python executable
+    script_path = "Misc/event_plot.py"
+    subprocess.run([virtualenv_python, script_path])
+
+# Create a button to execute the script
+if st.button("Execute event_plot.py"):
+    execute_event_plot()
+    st.success("event_plot.py executed successfully!")
+
 
 # Display the main window
 st.sidebar.write("[Go back to Search Page](#settings)")
-
-
-if st.session_state.df is not None:
-    st.subheader("Select Columns for Plotting")
-
-    # Determine available columns based on the selected database
-    if database == 'event':
-        available_columns = st.session_state.df.columns
-    elif database == '510k':
-        available_columns = st.session_state.df.columns
-    elif database == 'udi':
-        available_columns = st.session_state.df.columns
-    elif database == 'recall':
-        available_columns = st.session_state.df.columns
-    else:
-        available_columns = []  # No columns available for other databases
-    
-    x_column = st.selectbox('X-axis', available_columns)
-
-    st.subheader("Sample Plot")
-
-    # TODO: there is still an error with lists such as patient_problems, to be corrected
-
-    # Check if both x_column is selected
-    if x_column:
-
-        # Group the data by the selected x_column and calculate the count.
-
-        # Flatten the lists
-        grouped_df = st.session_state.df.groupby(x_column).size().reset_index(name='Count')
-        st.write(grouped_df)
-        # Convert all grouped_df values to strings
-        grouped_df[x_column] = grouped_df[x_column].astype(str)
-
-        # Create the bar chart using the grouped data
-        fig = px.bar(grouped_df, x= 'Count', y=x_column)
-        fig.update_traces(marker_line_color='black', marker_line_width=1)
-        fig.update_layout(font_family="Courier New")
-        st.session_state.plot_container = st.empty()
-        st.session_state.plot_container.plotly_chart(fig)
-
-    else:
-        st.warning("Plotting is not available for the selected database.")
