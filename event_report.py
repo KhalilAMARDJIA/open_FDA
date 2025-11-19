@@ -41,6 +41,7 @@ class Config:
         "Appropriate Clinical Signs",
         "No Clinical Signs",
         "Conditions Term / Code Not Available",
+        "Appropriate Term / Code Not Available",
         "Insufficient Information",
         "No Patient Involvement",
         "Reaction",
@@ -314,6 +315,7 @@ avg_monthly_reports <- round(mean(monthly_counts$n), 1)
 max_monthly_reports <- max(monthly_counts$n)
 max_month <- monthly_counts %>%
   filter(n == max_monthly_reports) %>%
+  slice(1) %>%
   pull(year_month) %>%
   format("%B %Y")
 ```
@@ -337,13 +339,13 @@ summary_stats <- tibble(
     "Maximum Monthly Reports"
   ),
   Value = c(
-    format(total_reports, big.mark = ","),
-    paste(format(date_min, "%B %d, %Y"), "to", format(date_max, "%B %d, %Y")),
-    paste(duration_days, "days (", duration_months, "months)"),
-    format(unique_manufacturers, big.mark = ","),
-    format(unique_brands, big.mark = ","),
-    paste(avg_monthly_reports, "reports/month"),
-    paste(max_monthly_reports, "reports in", max_month)
+    as.character(format(total_reports, big.mark = ",")),
+    as.character(paste(format(date_min, "%B %d, %Y"), "to", format(date_max, "%B %d, %Y"))),
+    as.character(paste0(duration_days, " days (", duration_months, " months)")),
+    as.character(format(unique_manufacturers, big.mark = ",")),
+    as.character(format(unique_brands, big.mark = ",")),
+    as.character(paste0(avg_monthly_reports, " reports/month")),
+    as.character(paste0(max_monthly_reports, " reports in ", max_month))
   )
 )
 
