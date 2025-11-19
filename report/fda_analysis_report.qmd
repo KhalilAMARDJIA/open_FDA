@@ -244,21 +244,88 @@ ggplot(monthly_plot_data, aes(x = year_month, y = n)) +
 ```{r compute-trend-stats}
 #| echo: false
 
-# Identify peaks (above 75th percentile)
-threshold <- quantile(monthly_plot_data$n, 0.75)
-peak_months <- monthly_plot_data %>%
-  filter(n > threshold) %>%
-  arrange(desc(n)) %>%
-  mutate(month_label = format(year_month, "%B %Y"))
+# Statistical analysis for peak detection
+mean_monthly <- mean(monthly_plot_data$n)
+sd_monthly <- sd(monthly_plot_data$n)
 
-peak_list <- paste(peak_months$month_label, collapse = ", ")
-sd_monthly <- round(sd(monthly_plot_data$n), 1)
+# Calculate z-scores for each month
+monthly_plot_data <- monthly_plot_data %>%
+  mutate(
+    z_score = (n - mean_monthly) / sd_monthly,
+    deviation = n - mean_monthly,
+    is_significant = abs(z_score) >= 2  # 95% confidence level (2 standard deviations)
+  )
+
+# Identify statistically significant peaks (positive outliers)
+significant_peaks <- monthly_plot_data %>%
+  filter(z_score >= 2) %>%  # Above 2 standard deviations (p < 0.05)
+  arrange(desc(z_score)) %>%
+  mutate(
+    month_label = format(year_month, "%B %Y"),
+    z_score_rounded = round(z_score, 2),
+    deviation_pct = round(100 * deviation / mean_monthly, 1)
+  )
+
+# Identify statistically significant valleys (negative outliers)
+significant_valleys <- monthly_plot_data %>%
+  filter(z_score <= -2) %>%
+  arrange(z_score) %>%
+  mutate(
+    month_label = format(year_month, "%B %Y"),
+    z_score_rounded = round(abs(z_score), 2),
+    deviation_pct = round(100 * abs(deviation) / mean_monthly, 1)
+  )
+
+n_significant_peaks <- nrow(significant_peaks)
+n_significant_valleys <- nrow(significant_valleys)
+
+# Format peak and valley lists
+if(n_significant_peaks > 0) {
+  peak_details <- significant_peaks %>%
+    mutate(detail = sprintf("%s (%s reports, z=%.2f, +%s%%)", 
+                           month_label, 
+                           format(n, big.mark = ","),
+                           z_score_rounded,
+                           deviation_pct)) %>%
+    pull(detail)
+  peak_list <- paste(peak_details, collapse = "; ")
+} else {
+  peak_list <- "None detected"
+}
+
+if(n_significant_valleys > 0) {
+  valley_details <- significant_valleys %>%
+    mutate(detail = sprintf("%s (%s reports, z=%.2f, -%s%%)", 
+                           month_label, 
+                           format(n, big.mark = ","),
+                           z_score_rounded,
+                           deviation_pct)) %>%
+    pull(detail)
+  valley_list <- paste(valley_details, collapse = "; ")
+} else {
+  valley_list <- "None detected"
+}
+
+sd_monthly_rounded <- round(sd_monthly, 1)
+cv <- round(100 * sd_monthly / mean_monthly, 1)  # Coefficient of variation
 ```
 
 ::: {.callout-note}
-## Trend Observation
-The reporting shows variability across months, with notable peaks in **`r peak_list`**. The average monthly reporting rate is **`r avg_monthly_reports`** reports, with a standard deviation of **`r sd_monthly`** reports.
+## Statistical Trend Analysis
+
+**Reporting Variability:** The average monthly reporting rate is **`r avg_monthly_reports`** reports (SD = **`r sd_monthly_rounded`**, CV = **`r cv`%**).
+
+**Statistically Significant Peaks** (≥2 SD above mean, p < 0.05):
+
+`r if(n_significant_peaks > 0) {paste0(n_significant_peaks, " month(s) identified: ", peak_list)} else {"No statistically significant peaks detected at 95% confidence level."}`
+
+**Statistically Significant Valleys** (≥2 SD below mean, p < 0.05):
+
+`r if(n_significant_valleys > 0) {paste0(n_significant_valleys, " month(s) identified: ", valley_list)} else {"No statistically significant valleys detected at 95% confidence level."}`
+
+*Note: Months are considered statistically significant outliers when they deviate by ≥2 standard deviations from the mean (z-score ≥ |2|), corresponding to approximately 95% confidence level.*
 :::
+
 
 ## Cumulative Reports Over Time
 
@@ -359,15 +426,15 @@ product_problems_plot <- product_problems_80 %>%
 
 n_80_problems <- nrow(product_problems_80)
 total_80_product_problems <- sum(product_problems_80$n)
-pct_80 <- round(100 * total_80_product_problems / total_reports, 1)
-other_pct <- round(100 * other_problems_n / total_reports, 1)
+pct_80 <- round(100 * total_80_product_problems / total_all_product_problems, 1)
+other_pct <- round(100 * other_problems_n / total_all_product_problems, 1)
 ```
 
 ## Product Problems Analysis (80% of Data)
 
 ```{r product-problems-plot}
 #| label: fig-product-problems
-#| fig-cap: "Product problems accounting for 80% of reports, plus 'Other' category"
+#| fig-cap: "Product problems accounting for 80% of problem occurrences, plus 'Other' category"
 #| fig-width: 8
 #| fig-height: !expr max(10, (n_80_problems + 1) * 0.4)
 
@@ -382,8 +449,8 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
     subtitle = paste0("(", format(date_min, "%B %Y"), 
                      " - ", format(date_max, "%B %Y"), ")"),
     x = "Product Problem",
-    y = "Number of Reports",
-    caption = "Source: FDA MAUDE Database"
+    y = "Number of Occurrences",
+    caption = "Source: FDA MAUDE Database | Note: Reports may contain multiple problems"
   ) +
   theme(axis.text.y = element_text(size = 8))
 ```
@@ -391,9 +458,11 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
 ::: {.callout-warning}
 ## Product Issues - 80% Analysis
 
-**`r n_80_problems`** product problem types account for **80%** of all reported issues (**`r total_80_product_problems`** reports, **`r pct_80`%** of total).
+A total of **`r n_80_problems`** product problem types account for **80%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences, **`r pct_80`%** of total).
 
-The remaining **`r other_problems_n`** reports (**`r other_pct`%**) are categorized as "Other".
+The remaining **`r format(other_problems_n, big.mark = ",")`** problem occurrences (**`r other_pct`%**) are categorized as "Other".
+
+*Note: Individual reports may list multiple product problems, so total occurrences may exceed the number of reports.*
 
 **All Product Problems in 80% Threshold:**
 
@@ -403,11 +472,11 @@ The remaining **`r other_problems_n`** reports (**`r other_pct`%**) are categori
 
 all_80_product <- product_problems_80 %>%
   mutate(
-    pct = sprintf("%.1f%%", 100 * n / total_reports)
+    pct = sprintf("%.1f%%", 100 * n / total_all_product_problems)
   )
 
 for(i in 1:nrow(all_80_product)) {
-  cat(sprintf("%d. **%s** - %s reports (%s)
+  cat(sprintf("%d. **%s** - %s occurrences (%s)
 ", 
               i, 
               all_80_product$problems[i], 
@@ -466,15 +535,15 @@ patient_problems_plot <- patient_problems_80 %>%
 
 n_80_patient_problems <- nrow(patient_problems_80)
 total_80_patient_problems <- sum(patient_problems_80$n)
-pct_80_patient <- round(100 * total_80_patient_problems / total_reports, 1)
-other_patient_pct <- round(100 * other_patient_problems_n / total_reports, 1)
+pct_80_patient <- round(100 * total_80_patient_problems / total_all_patient_problems, 1)
+other_patient_pct <- round(100 * other_patient_problems_n / total_all_patient_problems, 1)
 ```
 
 ## Patient Problems Analysis (80% of Data)
 
 ```{r patient-problems-plot}
 #| label: fig-patient-problems
-#| fig-cap: "Patient problems accounting for 80% of reports, plus 'Other' category"
+#| fig-cap: "Patient problems accounting for 80% of problem occurrences, plus 'Other' category"
 #| fig-width: 8
 #| fig-height: !expr max(10, (n_80_patient_problems + 1) * 0.4)
 
@@ -488,8 +557,8 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
     title = "Patient Problems (80% of Data + Other)",
     subtitle = "Clinical outcomes and adverse events",
     x = "Patient Problem",
-    y = "Number of Reports",
-    caption = "Source: FDA MAUDE Database"
+    y = "Number of Occurrences",
+    caption = "Source: FDA MAUDE Database | Note: Reports may contain multiple problems"
   ) +
   theme(axis.text.y = element_text(size = 8))
 ```
@@ -497,9 +566,11 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
 ::: {.callout-note}
 ## Patient Problems - 80% Analysis
 
-**`r n_80_patient_problems`** patient problem types account for **80%** of all reported patient issues (**`r total_80_patient_problems`** reports, **`r pct_80_patient`%** of total).
+A total of **`r n_80_patient_problems`** patient problem types account for **80%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences, **`r pct_80_patient`%** of total).
 
-The remaining **`r other_patient_problems_n`** reports (**`r other_patient_pct`%**) are categorized as "Other".
+The remaining **`r format(other_patient_problems_n, big.mark = ",")`** problem occurrences (**`r other_patient_pct`%**) are categorized as "Other".
+
+*Note: Individual reports may list multiple patient problems, so total occurrences may exceed the number of reports.*
 
 **All Patient Problems in 80% Threshold:**
 
@@ -509,11 +580,11 @@ The remaining **`r other_patient_problems_n`** reports (**`r other_patient_pct`%
 
 all_80_patient <- patient_problems_80 %>%
   mutate(
-    pct = sprintf("%.1f%%", 100 * n / total_reports)
+    pct = sprintf("%.1f%%", 100 * n / total_all_patient_problems)
   )
 
 for(i in 1:nrow(all_80_patient)) {
-  cat(sprintf("%d. **%s** - %s reports (%s)
+  cat(sprintf("%d. **%s** - %s occurrences (%s)
 ", 
               i, 
               all_80_patient$problems[i], 
@@ -597,11 +668,11 @@ ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
   theme(axis.text.y = element_text(size = 8))
 ```
 
-**`r n_80_manufacturers`** manufacturers account for **80%** of all reports (**`r total_80_manufacturer_reports`** reports, **`r pct_80_manufacturer`%** of total).
+A total of **`r n_80_manufacturers`** manufacturers account for **80%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports, **`r pct_80_manufacturer`%** of total).
 
-The remaining **`r other_manufacturers_n`** reports (**`r other_manufacturer_pct`%**) are from other manufacturers.
+The remaining **`r format(other_manufacturers_n, big.mark = ",")`** reports (**`r other_manufacturer_pct`%**) are from other manufacturers.
 
-The top manufacturer, **`r top_manufacturer`**, accounts for **`r top_manufacturer_count`** reports (**`r top_manufacturer_pct`%** of total).
+The top manufacturer, **`r top_manufacturer`**, accounts for **`r format(top_manufacturer_count, big.mark = ",")`** reports (**`r top_manufacturer_pct`%** of total).
 
 ```{r manufacturer-table}
 #| label: tbl-manufacturers
@@ -707,11 +778,11 @@ ggplot(top_brands, aes(x = brand_std, y = n)) +
 )
 ```
 
-**`r n_80_brands`** device brands account for **80%** of all reports (**`r total_80_brand_reports`** reports, **`r pct_80_brand`%** of total).
+A total of **`r n_80_brands`** device brands account for **80%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports, **`r pct_80_brand`%** of total).
 
-The remaining **`r other_brands_n`** reports (**`r other_brand_pct`%**) are from other brands.
+The remaining **`r format(other_brands_n, big.mark = ",")`** reports (**`r other_brand_pct`%**) are from other brands.
 
-The top device brand, **`r top_brand`**, accounts for **`r top_brand_count`** reports (**`r top_brand_pct`%** of total).
+The top device brand, **`r top_brand`**, accounts for **`r format(top_brand_count, big.mark = ",")`** reports (**`r top_brand_pct`%** of total).
 
 ```{r brand-table}
 #| label: tbl-brands
@@ -813,7 +884,7 @@ Appropriate Term/Code Not Available, Unknown, Insufficient Information
 
 ## Report Metadata
 
-- **Generated**: 2025-11-19 17:26:42
-- **Dataset Version**: 2025-10-31
-- **Total Records Analyzed**: 3,552
+- **Generated**: 2025-11-19 17:41:01
+- **Dataset Version**: 2025-10-29
+- **Total Records Analyzed**: 268
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
