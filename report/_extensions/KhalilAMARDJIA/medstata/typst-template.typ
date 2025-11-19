@@ -39,9 +39,9 @@
 // FONT CONFIGURATION
 // ============================================================================
 
-#let main_fonts = ("IBM Plex Serif","CMU Concrete", "STIX Two Text")  // Body text fonts
+#let main_fonts = ("Latin Modern Roman 12","IBM Plex Serif","CMU Concrete", "STIX Two Text")  // Body text fonts
 #let secondary_fonts = "IBM Plex Sans"              // Headers and UI elements
-#let code_fonts = ("Iosevka NFM", "IBM Plex Mono")                     // Code blocks
+#let code_fonts = ("Iosevka NFM", "IBM Plex Mono", "Latin Modern Mono")                     // Code blocks
 
 // ============================================================================
 // HELPER FUNCTIONS

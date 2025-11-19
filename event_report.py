@@ -27,8 +27,9 @@ class Config:
     BRAND_THRESHOLD = 75
     
     # Display settings
-    TOP_N_PROBLEMS = 20
-    TOP_N_BRANDS = 5
+    ANALYSIS_THRESHOLD = 0.80  # 80% of data for analysis
+    TOP_N_PROBLEMS = 20  # Fallback if needed
+    TOP_N_BRANDS = 5     # Fallback if needed
     
     # Exclusion lists
     PATIENT_EXCLUSIONS = [
@@ -198,8 +199,7 @@ lot: true
 toc: true
 version: 1.0
 format:
-  medstata-typst:
-    default-image-extension: svg
+  medstata-typst: default
 execute:
   echo: false
   warning: false
@@ -409,7 +409,8 @@ ggplot(monthly_plot_data, aes(x = year_month, y = n)) +
     x = "Month",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
-  )
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ```{{r compute-trend-stats}}
@@ -490,56 +491,102 @@ ggplot(cumulative_data, aes(x = date_received, y = cumulative_count)) +
 # Extract and count individual product problems
 product_problems_vector <- parse_problem_lists(data$product_problems)
 
-product_problems <- tibble(problems = product_problems_vector) %>%
+# Get all product problems sorted by frequency
+product_problems_all <- tibble(problems = product_problems_vector) %>%
   filter(
     !is.na(problems) &
     problems != "" &
     !problems %in% PRODUCT_EXCLUSIONS
   ) %>%
-  count(problems, sort = TRUE) %>%
-  slice_head(n = 20)
+  count(problems, sort = TRUE)
 
-top_3_problems <- product_problems %>%
-  head(3) %>%
-  pull(problems)
+total_all_product_problems <- sum(product_problems_all$n)
 
-total_product_problems <- sum(product_problems$n)
+# Calculate cumulative percentage for 80% analysis
+product_problems_all <- product_problems_all %>%
+  mutate(
+    cumulative_n = cumsum(n),
+    cumulative_pct = cumulative_n / total_all_product_problems
+  )
+
+# Get items that account for 80% of data
+# Use lag to check if previous row was < 0.80, ensuring we include the item that crosses 80%
+product_problems_80 <- product_problems_all %>%
+  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
+  filter(prev_pct < 0.80) %>%
+  select(-prev_pct)
+
+# Ensure we have at least one item
+if(nrow(product_problems_80) == 0) {{
+  product_problems_80 <- product_problems_all %>% slice_head(n = 1)
+}}
+
+# Calculate "Other" category
+other_problems_n <- total_all_product_problems - sum(product_problems_80$n)
+
+# Add "Other" row for plotting
+product_problems_plot <- product_problems_80 %>%
+  bind_rows(tibble(problems = "Other", n = other_problems_n)) %>%
+  mutate(problems = factor(problems, levels = c("Other", rev(product_problems_80$problems))))
+
+n_80_problems <- nrow(product_problems_80)
+total_80_product_problems <- sum(product_problems_80$n)
+pct_80 <- round(100 * total_80_product_problems / total_reports, 1)
+other_pct <- round(100 * other_problems_n / total_reports, 1)
 ```
 
-## Top Product Problems
+## Product Problems Analysis (80% of Data)
 
 ```{{r product-problems-plot}}
 #| label: fig-product-problems
-#| fig-cap: "Most frequently reported product problems"
+#| fig-cap: "Product problems accounting for 80% of reports, plus 'Other' category"
 #| fig-width: 8
-#| fig-height: 10
+#| fig-height: !expr max(10, (n_80_problems + 1) * 0.4)
 
-ggplot(product_problems, aes(x = reorder(problems, n), y = n)) +
-  geom_col(fill = colors$highlight, alpha = 0.8) +
+ggplot(product_problems_plot, aes(x = problems, y = n)) +
+  geom_col(aes(fill = problems == "Other"), alpha = 0.8, show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$highlight, "TRUE" = "gray70")) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
   labs(
-    title = "Top 20 Product Problems Reported",
+    title = "Product Problems (80% of Data + Other)",
     subtitle = paste0("(", format(date_min, "%B %Y"), 
                      " - ", format(date_max, "%B %Y"), ")"),
     x = "Product Problem",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
   ) +
-  theme(axis.text.y = element_text(size = 9))
+  theme(axis.text.y = element_text(size = 8))
 ```
 
 ::: {{.callout-warning}}
-## Product Issues
+## Product Issues - 80% Analysis
 
-The most frequently reported problems are:
+**`r n_80_problems`** product problem types account for **80%** of all reported issues (**`r total_80_product_problems`** reports, **`r pct_80`%** of total).
 
-1. **`r top_3_problems[1]`** - `r product_problems$n[1]` reports (`r round(100 * product_problems$n[1] / total_reports, 1)`%)
-2. **`r top_3_problems[2]`** - `r product_problems$n[2]` reports (`r round(100 * product_problems$n[2] / total_reports, 1)`%)
-3. **`r top_3_problems[3]`** - `r product_problems$n[3]` reports (`r round(100 * product_problems$n[3] / total_reports, 1)`%)
+The remaining **`r other_problems_n`** reports (**`r other_pct`%**) are categorized as "Other".
 
-These top three issues account for **`r sum(product_problems$n[1:3])`** reports (**`r round(100 * sum(product_problems$n[1:3]) / total_reports, 1)`%** of all reports).
+**All Product Problems in 80% Threshold:**
+
+```{{r all-product-table}}
+#| echo: false
+#| results: asis
+
+all_80_product <- product_problems_80 %>%
+  mutate(
+    pct = sprintf("%.1f%%", 100 * n / total_reports)
+  )
+
+for(i in 1:nrow(all_80_product)) {{
+  cat(sprintf("%d. **%s** - %s reports (%s)\n", 
+              i, 
+              all_80_product$problems[i], 
+              format(all_80_product$n[i], big.mark = ","),
+              all_80_product$pct[i]))
+}}
+```
+
 :::
 
 # Patient Problem Analysis
@@ -550,88 +597,187 @@ These top three issues account for **`r sum(product_problems$n[1:3])`** reports 
 # Extract and count patient problems
 patient_problems_vector <- parse_problem_lists(data$patient_problems)
 
-patient_problems <- tibble(problems = patient_problems_vector) %>%
+# Get all patient problems sorted by frequency
+patient_problems_all <- tibble(problems = patient_problems_vector) %>%
   filter(
     !is.na(problems) &
     problems != "" &
     !problems %in% PATIENT_EXCLUSIONS
   ) %>%
-  count(problems, sort = TRUE) %>%
-  slice_head(n = 20)
+  count(problems, sort = TRUE)
 
-total_patient_problems <- sum(patient_problems$n)
+total_all_patient_problems <- sum(patient_problems_all$n)
+
+# Calculate cumulative percentage for 80% analysis
+patient_problems_all <- patient_problems_all %>%
+  mutate(
+    cumulative_n = cumsum(n),
+    cumulative_pct = cumulative_n / total_all_patient_problems
+  )
+
+# Get items that account for 80% of data
+# Use lag to check if previous row was < 0.80, ensuring we include the item that crosses 80%
+patient_problems_80 <- patient_problems_all %>%
+  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
+  filter(prev_pct < 0.80) %>%
+  select(-prev_pct)
+
+# Ensure we have at least one item
+if(nrow(patient_problems_80) == 0) {{
+  patient_problems_80 <- patient_problems_all %>% slice_head(n = 1)
+}}
+
+# Calculate "Other" category
+other_patient_problems_n <- total_all_patient_problems - sum(patient_problems_80$n)
+
+# Add "Other" row for plotting
+patient_problems_plot <- patient_problems_80 %>%
+  bind_rows(tibble(problems = "Other", n = other_patient_problems_n)) %>%
+  mutate(problems = factor(problems, levels = c("Other", rev(patient_problems_80$problems))))
+
+n_80_patient_problems <- nrow(patient_problems_80)
+total_80_patient_problems <- sum(patient_problems_80$n)
+pct_80_patient <- round(100 * total_80_patient_problems / total_reports, 1)
+other_patient_pct <- round(100 * other_patient_problems_n / total_reports, 1)
 ```
 
-## Patient Problems Overview
+## Patient Problems Analysis (80% of Data)
 
 ```{{r patient-problems-plot}}
 #| label: fig-patient-problems
-#| fig-cap: "Patient problems reported in FDA MAUDE events"
+#| fig-cap: "Patient problems accounting for 80% of reports, plus 'Other' category"
 #| fig-width: 8
-#| fig-height: 10
+#| fig-height: !expr max(10, (n_80_patient_problems + 1) * 0.4)
 
-ggplot(patient_problems, aes(x = reorder(problems, n), y = n)) +
-  geom_col(fill = colors$info, alpha = 0.8) +
+ggplot(patient_problems_plot, aes(x = problems, y = n)) +
+  geom_col(aes(fill = problems == "Other"), alpha = 0.8, show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$info, "TRUE" = "gray70")) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
   labs(
-    title = "Top 20 Patient Problems Reported",
+    title = "Patient Problems (80% of Data + Other)",
     subtitle = "Clinical outcomes and adverse events",
     x = "Patient Problem",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
   ) +
-  theme(axis.text.y = element_text(size = 9))
+  theme(axis.text.y = element_text(size = 8))
 ```
+
+::: {{.callout-note}}
+## Patient Problems - 80% Analysis
+
+**`r n_80_patient_problems`** patient problem types account for **80%** of all reported patient issues (**`r total_80_patient_problems`** reports, **`r pct_80_patient`%** of total).
+
+The remaining **`r other_patient_problems_n`** reports (**`r other_patient_pct`%**) are categorized as "Other".
+
+**All Patient Problems in 80% Threshold:**
+
+```{{r all-patient-table}}
+#| echo: false
+#| results: asis
+
+all_80_patient <- patient_problems_80 %>%
+  mutate(
+    pct = sprintf("%.1f%%", 100 * n / total_reports)
+  )
+
+for(i in 1:nrow(all_80_patient)) {{
+  cat(sprintf("%d. **%s** - %s reports (%s)\n", 
+              i, 
+              all_80_patient$problems[i], 
+              format(all_80_patient$n[i], big.mark = ","),
+              all_80_patient$pct[i]))
+}}
+```
+
+:::
 
 # Manufacturer Analysis
 
-## Top Manufacturers
+## Top Manufacturers (80% of Data)
 
 ```{{r compute-manufacturers}}
 #| echo: false
 
-# Calculate manufacturer statistics
-top_manufacturers <- data %>%
-  count(manufacturer_std, sort = TRUE) %>%
-  slice_head(n = 10)
+# Calculate manufacturer statistics with 80% analysis
+manufacturers_all <- data %>%
+  count(manufacturer_std, sort = TRUE)
 
-top_5_manufacturers <- top_manufacturers %>%
-  head(5)
+total_all_manufacturers <- sum(manufacturers_all$n)
 
-top_manufacturer <- top_5_manufacturers$manufacturer_std[1]
-top_manufacturer_count <- top_5_manufacturers$n[1]
+manufacturers_all <- manufacturers_all %>%
+  mutate(
+    cumulative_n = cumsum(n),
+    cumulative_pct = cumulative_n / total_all_manufacturers
+  )
+
+# Get manufacturers that account for 80% of data
+# Use lag to check if previous row was < 0.80, ensuring we include the manufacturer that crosses 80%
+manufacturers_80 <- manufacturers_all %>%
+  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
+  filter(prev_pct < 0.80) %>%
+  select(-prev_pct)
+
+# Ensure we have at least one manufacturer
+if(nrow(manufacturers_80) == 0) {{
+  manufacturers_80 <- manufacturers_all %>% slice_head(n = 1)
+}}
+
+# Calculate "Other" category
+other_manufacturers_n <- total_all_manufacturers - sum(manufacturers_80$n)
+
+# Add "Other" row for plotting
+top_manufacturers <- manufacturers_80 %>%
+  bind_rows(tibble(manufacturer_std = "Other", n = other_manufacturers_n)) %>%
+  mutate(manufacturer_std = factor(manufacturer_std, levels = c("Other", rev(manufacturers_80$manufacturer_std))))
+
+n_80_manufacturers <- nrow(manufacturers_80)
+total_80_manufacturer_reports <- sum(manufacturers_80$n)
+pct_80_manufacturer <- round(100 * total_80_manufacturer_reports / total_reports, 1)
+other_manufacturer_pct <- round(100 * other_manufacturers_n / total_reports, 1)
+
+top_manufacturer <- manufacturers_80$manufacturer_std[1]
+top_manufacturer_count <- manufacturers_80$n[1]
 top_manufacturer_pct <- round(100 * top_manufacturer_count / total_reports, 1)
+
+# Table data (without Other)
+manufacturers_table_data <- manufacturers_80
 ```
 
 ```{{r manufacturer-plot}}
 #| label: fig-manufacturers
-#| fig-cap: "Top 10 manufacturers by report volume"
+#| fig-cap: "Manufacturers accounting for 80% of reports, plus 'Other' category"
 #| fig-width: 8
-#| fig-height: 6.5
+#| fig-height: !expr max(6.5, (n_80_manufacturers + 1) * 0.35)
 
-ggplot(top_manufacturers, aes(x = reorder(manufacturer_std, n), y = n)) +
-  geom_col(fill = colors$secondary, alpha = 0.8) +
+ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
+  geom_col(aes(fill = manufacturer_std == "Other"), alpha = 0.8, show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$secondary, "TRUE" = "gray70")) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
   labs(
-    title = "Top 10 Manufacturers by Report Volume",
+    title = "Manufacturers (80% of Data + Other)",
     x = "Manufacturer",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
   ) +
-  theme(axis.text.y = element_text(size = 9))
+  theme(axis.text.y = element_text(size = 8))
 ```
+
+**`r n_80_manufacturers`** manufacturers account for **80%** of all reports (**`r total_80_manufacturer_reports`** reports, **`r pct_80_manufacturer`%** of total).
+
+The remaining **`r other_manufacturers_n`** reports (**`r other_manufacturer_pct`%**) are from other manufacturers.
 
 The top manufacturer, **`r top_manufacturer`**, accounts for **`r top_manufacturer_count`** reports (**`r top_manufacturer_pct`%** of total).
 
 ```{{r manufacturer-table}}
 #| label: tbl-manufacturers
-#| tbl-cap: "Top 5 manufacturers with report statistics"
+#| tbl-cap: "Manufacturers accounting for 80% of reports"
 
-manufacturer_table <- top_5_manufacturers %>%
+manufacturer_table <- manufacturers_table_data %>%
   mutate(
     Rank = row_number(),
     Manufacturer = manufacturer_std,
@@ -645,7 +791,7 @@ kable(manufacturer_table, align = c("c", "l", "r", "r"))
 
 # Device Brand Analysis
 
-## Top Device Brands
+## Top Device Brands (80% of Data)
 
 ```{{=typst}}
 #set page(
@@ -656,37 +802,73 @@ kable(manufacturer_table, align = c("c", "l", "r", "r"))
 ```{{r compute-brands}}
 #| echo: false
 
-# Calculate brand statistics
-top_brands <- data %>%
-  count(brand_std, sort = TRUE) %>%
-  slice_head(n = 10)
+# Calculate brand statistics with 80% analysis
+brands_all <- data %>%
+  count(brand_std, sort = TRUE)
 
-top_5_brands <- top_brands %>%
-  head(5)
+total_all_brands <- sum(brands_all$n)
 
-top_brand <- top_5_brands$brand_std[1]
-top_brand_count <- top_5_brands$n[1]
+brands_all <- brands_all %>%
+  mutate(
+    cumulative_n = cumsum(n),
+    cumulative_pct = cumulative_n / total_all_brands
+  )
+
+# Get brands that account for 80% of data
+# Use lag to check if previous row was < 0.80, ensuring we include the brand that crosses 80%
+brands_80 <- brands_all %>%
+  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
+  filter(prev_pct < 0.80) %>%
+  select(-prev_pct)
+
+# Ensure we have at least one brand
+if(nrow(brands_80) == 0) {{
+  brands_80 <- brands_all %>% slice_head(n = 1)
+}}
+
+# Calculate "Other" category
+other_brands_n <- total_all_brands - sum(brands_80$n)
+
+# Add "Other" row for plotting
+top_brands <- brands_80 %>%
+  bind_rows(tibble(brand_std = "Other", n = other_brands_n)) %>%
+  mutate(brand_std = factor(brand_std, levels = c("Other", rev(brands_80$brand_std))))
+
+n_80_brands <- nrow(brands_80)
+total_80_brand_reports <- sum(brands_80$n)
+pct_80_brand <- round(100 * total_80_brand_reports / total_reports, 1)
+other_brand_pct <- round(100 * other_brands_n / total_reports, 1)
+
+# Keep top 5 for cumulative analysis
+top_5_brands <- brands_80 %>% head(5)
+
+top_brand <- brands_80$brand_std[1]
+top_brand_count <- brands_80$n[1]
 top_brand_pct <- round(100 * top_brand_count / total_reports, 1)
+
+# Table data (without Other)
+brands_table_data <- brands_80
 ```
 
 ```{{r brand-plot}}
 #| label: fig-brands
-#| fig-cap: "Top 10 device brands by report volume"
+#| fig-cap: "Device brands accounting for 80% of reports, plus 'Other' category"
 #| fig-width: 10
-#| fig-height: 6
+#| fig-height: !expr max(6, (n_80_brands + 1) * 0.35)
 
-ggplot(top_brands, aes(x = reorder(brand_std, n), y = n)) +
-  geom_col(fill = colors$primary, alpha = 0.8) +
+ggplot(top_brands, aes(x = brand_std, y = n)) +
+  geom_col(aes(fill = brand_std == "Other"), alpha = 0.8, show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$primary, "TRUE" = "gray70")) +
   geom_text(aes(label = n), hjust = -0.3, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
   labs(
-    title = "Top 10 Device Brands by Report Volume",
+    title = "Device Brands (80% of Data + Other)",
     x = "Brand",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
   ) +
-  theme(axis.text.y = element_text(size = 8))
+  theme(axis.text.y = element_text(size = 7))
 ```
 
 ```{{=typst}}
@@ -695,13 +877,17 @@ ggplot(top_brands, aes(x = reorder(brand_std, n), y = n)) +
 )
 ```
 
+**`r n_80_brands`** device brands account for **80%** of all reports (**`r total_80_brand_reports`** reports, **`r pct_80_brand`%** of total).
+
+The remaining **`r other_brands_n`** reports (**`r other_brand_pct`%**) are from other brands.
+
 The top device brand, **`r top_brand`**, accounts for **`r top_brand_count`** reports (**`r top_brand_pct`%** of total).
 
 ```{{r brand-table}}
 #| label: tbl-brands
-#| tbl-cap: "Top 5 device brands with report statistics"
+#| tbl-cap: "Device brands accounting for 80% of reports"
 
-brand_table <- top_5_brands %>%
+brand_table <- brands_table_data %>%
   mutate(
     Rank = row_number(),
     Brand = brand_std,
@@ -756,7 +942,12 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
     color = "Brand Name",
     caption = "Source: FDA MAUDE Database"
   ) +
-  theme(legend.position = "right")
+  theme(
+    legend.position = c(0.02, 0.98),
+    legend.justification = c(0, 1),
+    legend.background = element_rect(fill = "white", color = "black", linewidth = 0.3),
+    legend.margin = margin(4, 6, 4, 6)
+  )
 ```
 
 # Technical Appendix
