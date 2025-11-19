@@ -41,6 +41,7 @@ class Config:
         "Appropriate Clinical Signs",
         "No Clinical Signs",
         "Conditions Term / Code Not Available",
+        "Appropriate Term / Code Not Available",
         "Insufficient Information",
         "No Patient Involvement",
         "Reaction",
@@ -50,6 +51,7 @@ class Config:
     PRODUCT_EXCLUSIONS = [
         "Adverse Event Without Identified Device or Use Problem",
         "Appropriate Term/Code Not Available",
+        "Appropriate Term / Code Not Available",
         "Unknown (for use when the device problem is not known)",
         "Insufficient Information",
         "No Apparent Adverse Event"

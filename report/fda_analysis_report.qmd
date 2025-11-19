@@ -73,6 +73,7 @@ PATIENT_EXCLUSIONS <- c(
   "Appropriate Clinical Signs",
   "No Clinical Signs",
   "Conditions Term / Code Not Available",
+  "Appropriate Term / Code Not Available",
   "Insufficient Information",
   "No Patient Involvement",
   "Reaction",
@@ -82,6 +83,7 @@ PATIENT_EXCLUSIONS <- c(
 PRODUCT_EXCLUSIONS <- c(
   "Adverse Event Without Identified Device or Use Problem",
   "Appropriate Term/Code Not Available",
+  "Appropriate Term / Code Not Available",
   "Unknown (for use when the device problem is not known)",
   "Insufficient Information",
   "No Apparent Adverse Event"
@@ -888,7 +890,7 @@ Appropriate Term/Code Not Available, Unknown, Insufficient Information
 
 ## Report Metadata
 
-- **Generated**: 2025-11-19 20:11:19
-- **Dataset Version**: 2025-10-29
-- **Total Records Analyzed**: 268
+- **Generated**: 2025-11-19 20:24:19
+- **Dataset Version**: 2025-10-31
+- **Total Records Analyzed**: 12,814
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
