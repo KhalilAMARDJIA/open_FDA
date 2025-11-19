@@ -364,6 +364,12 @@ The analysis employs fuzzy matching algorithms to standardize manufacturer and b
 
 Patient and product problems are extracted and categorized, excluding non-informative categories to focus on meaningful data patterns.
 
+```{{=typst}}
+#set page(
+  flipped: true,
+)
+```
+
 # Temporal Trend Analysis
 
 ## Overall Reporting Trends
@@ -371,8 +377,8 @@ Patient and product problems are extracted and categorized, excluding non-inform
 ```{{r temporal-analysis}}
 #| label: fig-temporal-trends
 #| fig-cap: "Monthly trend of FDA MAUDE reports"
-#| fig-width: 8
-#| fig-height: 6
+#| fig-width: 10
+#| fig-height: 5
 
 monthly_plot_data <- data %>%
   mutate(year_month = floor_date(date_received, "month")) %>%
@@ -392,12 +398,12 @@ if(date_range_years > 2) {{
 }}
 
 ggplot(monthly_plot_data, aes(x = year_month, y = n)) +
-  geom_line(color = colors$primary, linewidth = 1.2) +
-  geom_point(color = colors$primary, size = 3) +
+  geom_line(color = colors$primary, linewidth = 1, alpha = 0.3) +
+  geom_point(color = colors$primary, size = 1, alpha = 0.3) +
   geom_smooth(
     method = "loess", 
     se = TRUE, 
-    color = colors$secondary, 
+    color = colors$primary, 
     fill = colors$accent, 
     alpha = 0.2
   ) +
@@ -499,19 +505,16 @@ cv <- round(100 * sd_monthly / mean_monthly, 1)  # Coefficient of variation
 :::
 
 
+
 ## Cumulative Reports Over Time
 
-```{{=typst}}
-#set page(
-  flipped: true,
-)
-```
+
 
 ```{{r cumulative-plot}}
 #| label: fig-cumulative-reports
 #| fig-cap: "Cumulative FDA MAUDE reports over time"
 #| fig-width: 10
-#| fig-height: 6
+#| fig-height: 5
 
 cumulative_data <- data %>%
   arrange(date_received) %>%
@@ -602,11 +605,11 @@ pct_80 <- round(100 * total_80_product_problems / total_all_product_problems, 1)
 other_pct <- round(100 * other_problems_n / total_all_product_problems, 1)
 ```
 
-## Product Problems Analysis (80% of Data)
+## Product Problems Analysis
 
 ```{{r product-problems-plot}}
 #| label: fig-product-problems
-#| fig-cap: "Product problems accounting for 80% of problem occurrences, plus 'Other' category"
+#| fig-cap: !expr sprintf("Product problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other' category", pct_80)
 #| fig-width: 8
 #| fig-height: !expr max(10, (n_80_problems + 1) * 0.4)
 
@@ -617,7 +620,7 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
   labs(
-    title = "Product Problems (80% of Data + Other)",
+    title = sprintf("Product Problems (%s%% of Data + Other)", pct_80),
     subtitle = paste0("(", format(date_min, "%B %Y"), 
                      " - ", format(date_max, "%B %Y"), ")"),
     x = "Product Problem",
@@ -628,15 +631,15 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
 ```
 
 ::: {{.callout-warning}}
-## Product Issues - 80% Analysis
+## Product Issues Analysis
 
-A total of **`r n_80_problems`** product problem types account for **80%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences, **`r pct_80`%** of total).
+A total of **`r n_80_problems`** product problem types account for **`r pct_80`%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences).
 
 The remaining **`r format(other_problems_n, big.mark = ",")`** problem occurrences (**`r other_pct`%**) are categorized as "Other".
 
-*Note: Individual reports may list multiple product problems, so total occurrences may exceed the number of reports.*
+*Note: Individual reports may list multiple problems, so total occurrences may exceed the number of reports.*
 
-**All Product Problems in 80% Threshold:**
+**All Product Problems Representing `r pct_80`% of Data:**
 
 ```{{r all-product-table}}
 #| echo: false
@@ -710,11 +713,11 @@ pct_80_patient <- round(100 * total_80_patient_problems / total_all_patient_prob
 other_patient_pct <- round(100 * other_patient_problems_n / total_all_patient_problems, 1)
 ```
 
-## Patient Problems Analysis (80% of Data)
+## Patient Problems Analysis
 
 ```{{r patient-problems-plot}}
 #| label: fig-patient-problems
-#| fig-cap: "Patient problems accounting for 80% of problem occurrences, plus 'Other' category"
+#| fig-cap: !expr sprintf("Patient problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other' category", pct_80_patient)
 #| fig-width: 8
 #| fig-height: !expr max(10, (n_80_patient_problems + 1) * 0.4)
 
@@ -725,7 +728,7 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
   labs(
-    title = "Patient Problems (80% of Data + Other)",
+    title = sprintf("Patient Problems (%s%% of Data + Other)", pct_80_patient),
     subtitle = "Clinical outcomes and adverse events",
     x = "Patient Problem",
     y = "Number of Occurrences",
@@ -735,15 +738,15 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
 ```
 
 ::: {{.callout-note}}
-## Patient Problems - 80% Analysis
+## Patient Problems Analysis
 
-A total of **`r n_80_patient_problems`** patient problem types account for **80%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences, **`r pct_80_patient`%** of total).
+A total of **`r n_80_patient_problems`** patient problem types account for **`r pct_80_patient`%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences).
 
 The remaining **`r format(other_patient_problems_n, big.mark = ",")`** problem occurrences (**`r other_patient_pct`%**) are categorized as "Other".
 
 *Note: Individual reports may list multiple patient problems, so total occurrences may exceed the number of reports.*
 
-**All Patient Problems in 80% Threshold:**
+**All Patient Problems Representing `r pct_80_patient`% of Data:**
 
 ```{{r all-patient-table}}
 #| echo: false
@@ -767,7 +770,7 @@ for(i in 1:nrow(all_80_patient)) {{
 
 # Manufacturer Analysis
 
-## Top Manufacturers (80% of Data)
+## Top Manufacturers
 
 ```{{r compute-manufacturers}}
 #| echo: false
@@ -819,7 +822,7 @@ manufacturers_table_data <- manufacturers_80
 
 ```{{r manufacturer-plot}}
 #| label: fig-manufacturers
-#| fig-cap: "Manufacturers accounting for 80% of reports, plus 'Other' category"
+#| fig-cap: !expr sprintf("Manufacturers representing approximately 80%% of reports (%s%%), plus 'Other' category", pct_80_manufacturer)
 #| fig-width: 8
 #| fig-height: !expr max(6.5, (n_80_manufacturers + 1) * 0.35)
 
@@ -830,7 +833,7 @@ ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
   labs(
-    title = "Manufacturers (80% of Data + Other)",
+    title = sprintf("Manufacturers (%s%% of Data + Other)", pct_80_manufacturer),
     x = "Manufacturer",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
@@ -838,7 +841,7 @@ ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
   theme(axis.text.y = element_text(size = 8))
 ```
 
-A total of **`r n_80_manufacturers`** manufacturers account for **80%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports, **`r pct_80_manufacturer`%** of total).
+A total of **`r n_80_manufacturers`** manufacturers account for **`r pct_80_manufacturer`%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports).
 
 The remaining **`r format(other_manufacturers_n, big.mark = ",")`** reports (**`r other_manufacturer_pct`%**) are from other manufacturers.
 
@@ -846,7 +849,7 @@ The top manufacturer, **`r top_manufacturer`**, accounts for **`r format(top_man
 
 ```{{r manufacturer-table}}
 #| label: tbl-manufacturers
-#| tbl-cap: "Manufacturers accounting for 80% of reports"
+#| tbl-cap: !expr sprintf("Manufacturers representing %s%% of reports", pct_80_manufacturer)
 
 manufacturer_table <- manufacturers_table_data %>%
   mutate(
@@ -860,15 +863,12 @@ manufacturer_table <- manufacturers_table_data %>%
 kable(manufacturer_table, align = c("c", "l", "r", "r"))
 ```
 
+
 # Device Brand Analysis
 
-## Top Device Brands (80% of Data)
+## Top Device Brands
 
-```{{=typst}}
-#set page(
-  flipped: true,
-)
-```
+
 
 ```{{r compute-brands}}
 #| echo: false
@@ -921,9 +921,11 @@ top_brand_pct <- round(100 * top_brand_count / total_reports, 1)
 brands_table_data <- brands_80
 ```
 
+
+
 ```{{r brand-plot}}
 #| label: fig-brands
-#| fig-cap: "Device brands accounting for 80% of reports, plus 'Other' category"
+#| fig-cap: !expr sprintf("Device brands representing approximately 80%% of reports (%s%%), plus 'Other' category", pct_80_brand)
 #| fig-width: 10
 #| fig-height: !expr max(6, (n_80_brands + 1) * 0.35)
 
@@ -934,7 +936,7 @@ ggplot(top_brands, aes(x = brand_std, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
   labs(
-    title = "Device Brands (80% of Data + Other)",
+    title = sprintf("Device Brands (%s%% of Data + Other)", pct_80_brand),
     x = "Brand",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
@@ -942,21 +944,23 @@ ggplot(top_brands, aes(x = brand_std, y = n)) +
   theme(axis.text.y = element_text(size = 7))
 ```
 
+
+
+A total of **`r n_80_brands`** device brands account for **`r pct_80_brand`%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports).
+
+The remaining **`r format(other_brands_n, big.mark = ",")`** reports (**`r other_brand_pct`%**) are from other brands.
+
+The top device brand, **`r top_brand`**, accounts for **`r format(top_brand_count, big.mark = ",")`** reports (**`r top_brand_pct`%** of total).
+
 ```{{=typst}}
 #set page(
   flipped: false,
 )
 ```
 
-A total of **`r n_80_brands`** device brands account for **80%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports, **`r pct_80_brand`%** of total).
-
-The remaining **`r format(other_brands_n, big.mark = ",")`** reports (**`r other_brand_pct`%**) are from other brands.
-
-The top device brand, **`r top_brand`**, accounts for **`r format(top_brand_count, big.mark = ",")`** reports (**`r top_brand_pct`%** of total).
-
 ```{{r brand-table}}
 #| label: tbl-brands
-#| tbl-cap: "Device brands accounting for 80% of reports"
+#| tbl-cap: !expr sprintf("Device brands representing %s%% of reports", pct_80_brand)
 
 brand_table <- brands_table_data %>%
   mutate(
