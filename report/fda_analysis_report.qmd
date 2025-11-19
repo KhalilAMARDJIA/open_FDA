@@ -73,7 +73,6 @@ PATIENT_EXCLUSIONS <- c(
   "Appropriate Clinical Signs",
   "No Clinical Signs",
   "Conditions Term / Code Not Available",
-  "Appropriate Term / Code Not Available",
   "Insufficient Information",
   "No Patient Involvement",
   "Reaction",
@@ -83,7 +82,6 @@ PATIENT_EXCLUSIONS <- c(
 PRODUCT_EXCLUSIONS <- c(
   "Adverse Event Without Identified Device or Use Problem",
   "Appropriate Term/Code Not Available",
-  "Appropriate Term / Code Not Available",
   "Unknown (for use when the device problem is not known)",
   "Insufficient Information",
   "No Apparent Adverse Event"
@@ -186,13 +184,40 @@ kable(summary_stats, align = c("l", "l"))
 
 The search of the FDA Manufacturer and User Facility Device Experience (MAUDE) database was conducted using the openFDA Device Event API. Retrieved JSON-formatted data were downloaded directly from the API and subsequently processed and cleaned for analysis.
 
-## Data Standardization
+## Data Standardization and Fuzzy Matching
 
-The analysis employs fuzzy matching algorithms to standardize manufacturer and brand names, addressing inconsistencies in naming conventions across reports. This standardization process uses the **RapidFuzz** library with partial ratio matching to group similar names under a canonical representation.
+The analysis employs fuzzy matching algorithms to standardize manufacturer and brand names, addressing inconsistencies in naming conventions across reports. FDA MAUDE reports often contain variations in manufacturer and brand name spelling, capitalization, and formatting (e.g., "MEDTRONIC INC", "Medtronic Inc.", "MEDTRONIC").
 
-## Problem Classification
+**Fuzzy String Matching Approach**: Textually similar names are identified and grouped using the Levenshtein distance algorithm, which calculates the minimum number of single-character edits needed to transform one string into another. This standardization process uses the **RapidFuzz** library with partial ratio matching.
+
+**Matching Thresholds**: Manufacturer names with ≥65% similarity and brand names with ≥75% similarity are consolidated under a canonical representation (typically the shortest variant). This reduces artificial fragmentation in the data and provides more accurate reporting volume estimates per manufacturer and brand.
+
+## Problem Classification and Data Quality Filters
 
 Patient and product problems are extracted and categorized, excluding non-informative categories to focus on meaningful data patterns.
+
+**Key Considerations:**
+
+- Individual reports may list multiple product problems per incident
+- Individual reports may list multiple patient problems per incident
+- Total problem occurrences can exceed the total number of reports
+- Each problem occurrence is counted separately to identify the most frequent failure modes and issues
+
+Non-informative categories are excluded from both patient and product problem analyses. For the complete list of excluded categories, see @sec-exclusion-criteria in the Technical Appendix.
+
+## 80% Concentration Analysis
+
+This analysis employs a concentration-based approach to identify the critical few problems, manufacturers, and brands that account for the majority of occurrences. Rather than arbitrarily selecting a fixed number (e.g., "top 10"), we dynamically identify categories that collectively represent approximately 80% of all reported occurrences.
+
+**Implementation**: For each category (problems, manufacturers, brands), items are ranked by frequency and cumulative percentages calculated. Items are included in the main analysis if the previous item's cumulative percentage was below 80%. This ensures complete categories are included—no category is split between the main analysis and "Other".
+
+**Key Features**: The exact percentage may exceed 80% to maintain category integrity. All categories meeting the threshold are listed, not just a predetermined number. The "Other" category provides perspective on the long-tail distribution of remaining items.
+
+## Statistical Analysis of Temporal Trends
+
+**Variability Metrics**: Standard Deviation (SD) measures the typical spread of monthly reports around the average. Coefficient of Variation (CV) expresses SD as a percentage of the mean (CV = SD/Mean × 100), enabling relative comparison. CV < 15% indicates low variability, 15-30% moderate, and >30% high variability in reporting patterns.
+
+**Outlier Detection**: Z-scores measure how many standard deviations each month's report count deviates from the mean. Months with z-scores ≥ |2| are flagged as statistically significant outliers (p < 0.05), indicating unusually high (peaks) or low (valleys) reporting activity beyond approximately 95% of normal distribution.
 
 ```{=typst}
 #set page(
@@ -240,7 +265,6 @@ ggplot(monthly_plot_data, aes(x = year_month, y = n)) +
   scale_x_date(date_breaks = date_breaks, date_labels = date_labels) +
   scale_y_continuous(breaks = pretty_breaks()) +
   labs(
-    title = "Monthly FDA MAUDE Reports",
     subtitle = paste(format(date_min, "%B %Y"), "-", format(date_max, "%B %Y")),
     x = "Month",
     y = "Number of Reports",
@@ -317,24 +341,75 @@ if(n_significant_valleys > 0) {
 sd_monthly_rounded <- round(sd_monthly, 1)
 cv <- round(100 * sd_monthly / mean_monthly, 1)  # Coefficient of variation
 ```
+```{=typst}
+#set page(
+  flipped: false,
+)
+```
 
-::: {.callout-note}
+
 ## Statistical Trend Analysis
 
 **Reporting Variability:** The average monthly reporting rate is **`r avg_monthly_reports`** reports (SD = **`r sd_monthly_rounded`**, CV = **`r cv`%**).
 
 **Statistically Significant Peaks** (≥2 SD above mean, p < 0.05):
 
-`r if(n_significant_peaks > 0) {paste0(n_significant_peaks, " month(s) identified: ", peak_list)} else {"No statistically significant peaks detected at 95% confidence level."}`
+```{r peaks-bullets}
+#| echo: false
+#| results: asis
+
+if(n_significant_peaks > 0) {
+  cat(sprintf("
+%d month(s) identified:
+
+", n_significant_peaks))
+  for(i in 1:nrow(significant_peaks)) {
+    cat(sprintf("- **%s**: %s reports (z=%.2f, +%s%%)
+",
+                significant_peaks$month_label[i],
+                format(significant_peaks$n[i], big.mark = ","),
+                significant_peaks$z_score_rounded[i],
+                significant_peaks$deviation_pct[i]))
+  }
+} else {
+  cat("
+No statistically significant peaks detected at 95% confidence level.
+")
+}
+```
 
 **Statistically Significant Valleys** (≥2 SD below mean, p < 0.05):
 
-`r if(n_significant_valleys > 0) {paste0(n_significant_valleys, " month(s) identified: ", valley_list)} else {"No statistically significant valleys detected at 95% confidence level."}`
+```{r valleys-bullets}
+#| echo: false
+#| results: asis
 
-*Note: Months are considered statistically significant outliers when they deviate by ≥2 standard deviations from the mean (z-score ≥ |2|), corresponding to approximately 95% confidence level.*
-:::
+if(n_significant_valleys > 0) {
+  cat(sprintf("
+%d month(s) identified:
+
+", n_significant_valleys))
+  for(i in 1:nrow(significant_valleys)) {
+    cat(sprintf("- **%s**: %s reports (z=%.2f, -%s%%)
+",
+                significant_valleys$month_label[i],
+                format(significant_valleys$n[i], big.mark = ","),
+                significant_valleys$z_score_rounded[i],
+                significant_valleys$deviation_pct[i]))
+  }
+} else {
+  cat("
+No statistically significant valleys detected at 95% confidence level.
+")
+}
+```
 
 
+```{=typst}
+#set page(
+  flipped: true,
+)
+```
 
 ## Cumulative Reports Over Time
 
@@ -365,12 +440,10 @@ if(date_range_years > 2) {
 
 ggplot(cumulative_data, aes(x = date_received, y = cumulative_count)) +
   geom_line(color = colors$warning, linewidth = 1) +
-  geom_point(color = colors$primary, size = 2, shape = 4) +
+  geom_point(color = colors$primary, size = 0.5, shape = 4, alpha = 0.3) +
   scale_x_date(date_breaks = date_breaks, date_labels = date_labels) +
   scale_y_continuous(breaks = pretty_breaks(n = 10)) +
   labs(
-    title = "Cumulative FDA MAUDE Reports",
-    subtitle = "Growing trend analysis",
     x = "Date",
     y = "Cumulative Number of Reports",
     caption = "Source: FDA MAUDE Database"
@@ -450,7 +523,6 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
   labs(
-    title = sprintf("Product Problems (%s%% of Data + Other)", pct_80),
     subtitle = paste0("(", format(date_min, "%B %Y"), 
                      " - ", format(date_max, "%B %Y"), ")"),
     x = "Product Problem",
@@ -460,14 +532,9 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
   theme(axis.text.y = element_text(size = 8))
 ```
 
-::: {.callout-warning}
-## Product Issues Analysis
-
-A total of **`r n_80_problems`** product problem types account for **`r pct_80`%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences).
+A total of **`r n_80_problems`** product problem type(s) account for **`r pct_80`%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences).
 
 The remaining **`r format(other_problems_n, big.mark = ",")`** problem occurrences (**`r other_pct`%**) are categorized as "Other".
-
-*Note: Individual reports may list multiple problems, so total occurrences may exceed the number of reports.*
 
 **All Product Problems Representing `r pct_80`% of Data:**
 
@@ -489,8 +556,6 @@ for(i in 1:nrow(all_80_product)) {
               all_80_product$pct[i]))
 }
 ```
-
-:::
 
 # Patient Problem Analysis
 
@@ -559,7 +624,6 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
   labs(
-    title = sprintf("Patient Problems (%s%% of Data + Other)", pct_80_patient),
     subtitle = "Clinical outcomes and adverse events",
     x = "Patient Problem",
     y = "Number of Occurrences",
@@ -568,14 +632,9 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
   theme(axis.text.y = element_text(size = 8))
 ```
 
-::: {.callout-note}
-## Patient Problems Analysis
-
-A total of **`r n_80_patient_problems`** patient problem types account for **`r pct_80_patient`%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences).
+A total of **`r n_80_patient_problems`** patient problem type(s) account for **`r pct_80_patient`%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences).
 
 The remaining **`r format(other_patient_problems_n, big.mark = ",")`** problem occurrences (**`r other_patient_pct`%**) are categorized as "Other".
-
-*Note: Individual reports may list multiple patient problems, so total occurrences may exceed the number of reports.*
 
 **All Patient Problems Representing `r pct_80_patient`% of Data:**
 
@@ -597,8 +656,6 @@ for(i in 1:nrow(all_80_patient)) {
               all_80_patient$pct[i]))
 }
 ```
-
-:::
 
 # Manufacturer Analysis
 
@@ -665,7 +722,6 @@ ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
   labs(
-    title = sprintf("Manufacturers (%s%% of Data + Other)", pct_80_manufacturer),
     x = "Manufacturer",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
@@ -673,7 +729,7 @@ ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
   theme(axis.text.y = element_text(size = 8))
 ```
 
-A total of **`r n_80_manufacturers`** manufacturers account for **`r pct_80_manufacturer`%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports).
+A total of **`r n_80_manufacturers`** manufacturer(s) account for **`r pct_80_manufacturer`%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports).
 
 The remaining **`r format(other_manufacturers_n, big.mark = ",")`** reports (**`r other_manufacturer_pct`%**) are from other manufacturers.
 
@@ -681,7 +737,7 @@ The top manufacturer, **`r top_manufacturer`**, accounts for **`r format(top_man
 
 ```{r manufacturer-table}
 #| label: tbl-manufacturers
-#| tbl-cap: !expr sprintf("Manufacturers representing %s%% of reports", pct_80_manufacturer)
+#| tbl-cap: !expr sprintf("Manufacturer(s) representing %s%% of reports", pct_80_manufacturer)
 
 manufacturer_table <- manufacturers_table_data %>%
   mutate(
@@ -768,7 +824,6 @@ ggplot(top_brands, aes(x = brand_std, y = n)) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
   labs(
-    title = sprintf("Device Brands (%s%% of Data + Other)", pct_80_brand),
     x = "Brand",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
@@ -778,7 +833,7 @@ ggplot(top_brands, aes(x = brand_std, y = n)) +
 
 
 
-A total of **`r n_80_brands`** device brands account for **`r pct_80_brand`%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports).
+A total of **`r n_80_brands`** device brand(s) account for **`r pct_80_brand`%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports).
 
 The remaining **`r format(other_brands_n, big.mark = ",")`** reports (**`r other_brand_pct`%**) are from other brands.
 
@@ -792,7 +847,7 @@ The top device brand, **`r top_brand`**, accounts for **`r format(top_brand_coun
 
 ```{r brand-table}
 #| label: tbl-brands
-#| tbl-cap: !expr sprintf("Device brands representing %s%% of reports", pct_80_brand)
+#| tbl-cap: !expr sprintf("Device brand(s) representing %s%% of reports", pct_80_brand)
 
 brand_table <- brands_table_data %>%
   mutate(
@@ -843,7 +898,6 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
   scale_x_date(date_labels = date_labels, date_breaks = date_breaks) +
   scale_y_continuous(labels = comma, breaks = pretty_breaks()) +
   labs(
-    title = "Cumulative Reports by Device Brand",
     x = "Date Received",
     y = "Cumulative Reports",
     color = "Brand Name",
@@ -872,25 +926,36 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
 - **Visualization**: ggplot2 with custom base R theme
 - **Report Generation**: Quarto for reproducible analytics
 
-## Exclusion Criteria
+## Exclusion Criteria {#sec-exclusion-criteria}
 
 **Patient Problems Excluded:**
 
-```
-No Code Available, No Known Impact, Symptoms or Conditions,
-No Information, No Consequences, Insufficient Information
-```
+- No Code Available
+- No Known Impact Or Consequence To Patient
+- Symptoms or Conditions
+- No Information
+- No Consequences Or Impact To Patient
+- Appropriate Clinical Signs
+- No Clinical Signs
+- Conditions Term / Code Not Available
+- Appropriate Term / Code Not Available
+- Insufficient Information
+- No Patient Involvement
+- Reaction
+- Patient Problem/Medical Problem
 
 **Product Problems Excluded:**
 
-```
-Adverse Event Without Identified Device, No Apparent Adverse Event,
-Appropriate Term/Code Not Available, Unknown, Insufficient Information
-```
+- Adverse Event Without Identified Device or Use Problem
+- Appropriate Term/Code Not Available
+- Appropriate Term / Code Not Available
+- Unknown (for use when the device problem is not known)
+- Insufficient Information
+- No Apparent Adverse Event
 
 ## Report Metadata
 
-- **Generated**: 2025-11-19 20:24:19
+- **Generated**: 2025-11-19 21:05:07
 - **Dataset Version**: 2025-10-31
 - **Total Records Analyzed**: 12,814
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
