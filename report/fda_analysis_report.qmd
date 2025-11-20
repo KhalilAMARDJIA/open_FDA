@@ -188,11 +188,11 @@ The search of the FDA Manufacturer and User Facility Device Experience (MAUDE) d
 
 ## Data Standardization and Fuzzy Matching
 
-The analysis employs fuzzy matching algorithms to standardize manufacturer and brand names, addressing inconsistencies in naming conventions across reports. FDA MAUDE reports often contain variations in manufacturer and brand name spelling, capitalization, and formatting (e.g., "MEDTRONIC INC", "Medtronic Inc.", "MEDTRONIC").
+The analysis employs fuzzy matching algorithms to standardize manufacturer and brand names, addressing inconsistencies in naming conventions across reports. FDA MAUDE reports often contain variations in manufacturer and brand name spelling, capitalization, and formatting (e.g., different spellings, capitalizations, and legal entity suffixes such as "INC", "Inc.", or "LLC").
 
 **Fuzzy String Matching Approach**: Textually similar names are identified and grouped using the Levenshtein distance algorithm, which calculates the minimum number of single-character edits needed to transform one string into another. This standardization process uses the **RapidFuzz** library with partial ratio matching.
 
-**Matching Thresholds**: Manufacturer names with ≥65% similarity and brand names with ≥75% similarity are consolidated under a canonical representation (typically the shortest variant). This reduces artificial fragmentation in the data and provides more accurate reporting volume estimates per manufacturer and brand.
+**Matching Thresholds**: Manufacturer names with ≥75% similarity and brand names with ≥75% similarity are consolidated under a canonical representation (typically the shortest variant). This reduces artificial fragmentation in the data and provides more accurate reporting volume estimates per manufacturer and brand.
 
 ## Problem Classification and Data Quality Filters
 
@@ -207,7 +207,7 @@ Patient and product problems are extracted and categorized, excluding non-inform
 
 Non-informative categories are excluded from both patient and product problem analyses. For the complete list of excluded categories, see @sec-exclusion-criteria in the Technical Appendix.
 
-## 80% Concentration Analysis
+## Concentration-Based Analysis Methodology
 
 This analysis employs a concentration-based approach to identify the critical few problems, manufacturers, and brands that account for the majority of occurrences. Rather than arbitrarily selecting a fixed number (e.g., "top 10"), we dynamically identify categories that collectively represent approximately 80% of all reported occurrences.
 
@@ -499,10 +499,10 @@ if(nrow(product_problems_80) == 0) {
 # Calculate "Other" category
 other_problems_n <- total_all_product_problems - sum(product_problems_80$n)
 
-# Add "Other" row for plotting
+# Add "Other(s)" row for plotting
 product_problems_plot <- product_problems_80 %>%
-  bind_rows(tibble(problems = "Other", n = other_problems_n)) %>%
-  mutate(problems = factor(problems, levels = c("Other", rev(product_problems_80$problems))))
+  bind_rows(tibble(problems = "Other(s)", n = other_problems_n)) %>%
+  mutate(problems = factor(problems, levels = c("Other(s)", rev(product_problems_80$problems))))
 
 n_80_problems <- nrow(product_problems_80)
 total_80_product_problems <- sum(product_problems_80$n)
@@ -514,13 +514,15 @@ other_pct <- round(100 * other_problems_n / total_all_product_problems, 1)
 
 ```{r product-problems-plot}
 #| label: fig-product-problems
-#| fig-cap: !expr sprintf("Product problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other' category", pct_80)
+#| fig-cap: !expr sprintf("Product problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other(s)' category", pct_80)
 #| fig-width: 8
 #| fig-height: !expr max(10, (n_80_problems + 1) * 0.4)
 
 ggplot(product_problems_plot, aes(x = problems, y = n)) +
-  geom_col(aes(fill = problems == "Other"), alpha = 0.8, show.legend = FALSE) +
-  scale_fill_manual(values = c("FALSE" = colors$highlight, "TRUE" = "gray70")) +
+  geom_col(aes(fill = problems == "Other(s)", alpha = problems == "Other(s)"), 
+           show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$highlight, "TRUE" = "gray85")) +
+  scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
@@ -536,7 +538,7 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
 
 A total of **`r n_80_problems`** product problem type(s) account for **`r pct_80`%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences).
 
-The remaining **`r format(other_problems_n, big.mark = ",")`** problem occurrences (**`r other_pct`%**) are categorized as "Other".
+The remaining **`r format(other_problems_n, big.mark = ",")`** problem occurrences (**`r other_pct`%**) are categorized as "Other(s)".
 
 **All Product Problems Representing `r pct_80`% of Data:**
 
@@ -600,10 +602,10 @@ if(nrow(patient_problems_80) == 0) {
 # Calculate "Other" category
 other_patient_problems_n <- total_all_patient_problems - sum(patient_problems_80$n)
 
-# Add "Other" row for plotting
+# Add "Other(s)" row for plotting
 patient_problems_plot <- patient_problems_80 %>%
-  bind_rows(tibble(problems = "Other", n = other_patient_problems_n)) %>%
-  mutate(problems = factor(problems, levels = c("Other", rev(patient_problems_80$problems))))
+  bind_rows(tibble(problems = "Other(s)", n = other_patient_problems_n)) %>%
+  mutate(problems = factor(problems, levels = c("Other(s)", rev(patient_problems_80$problems))))
 
 n_80_patient_problems <- nrow(patient_problems_80)
 total_80_patient_problems <- sum(patient_problems_80$n)
@@ -615,13 +617,15 @@ other_patient_pct <- round(100 * other_patient_problems_n / total_all_patient_pr
 
 ```{r patient-problems-plot}
 #| label: fig-patient-problems
-#| fig-cap: !expr sprintf("Patient problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other' category", pct_80_patient)
+#| fig-cap: !expr sprintf("Patient problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other(s)' category", pct_80_patient)
 #| fig-width: 8
 #| fig-height: !expr max(10, (n_80_patient_problems + 1) * 0.4)
 
 ggplot(patient_problems_plot, aes(x = problems, y = n)) +
-  geom_col(aes(fill = problems == "Other"), alpha = 0.8, show.legend = FALSE) +
-  scale_fill_manual(values = c("FALSE" = colors$info, "TRUE" = "gray70")) +
+  geom_col(aes(fill = problems == "Other(s)", alpha = problems == "Other(s)"), 
+           show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$info, "TRUE" = "gray85")) +
+  scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
@@ -636,7 +640,7 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
 
 A total of **`r n_80_patient_problems`** patient problem type(s) account for **`r pct_80_patient`%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences).
 
-The remaining **`r format(other_patient_problems_n, big.mark = ",")`** problem occurrences (**`r other_patient_pct`%**) are categorized as "Other".
+The remaining **`r format(other_patient_problems_n, big.mark = ",")`** problem occurrences (**`r other_patient_pct`%**) are categorized as "Other(s)".
 
 **All Patient Problems Representing `r pct_80_patient`% of Data:**
 
@@ -693,10 +697,10 @@ if(nrow(manufacturers_80) == 0) {
 # Calculate "Other" category
 other_manufacturers_n <- total_all_manufacturers - sum(manufacturers_80$n)
 
-# Add "Other" row for plotting
+# Add "Other(s)" row for plotting
 top_manufacturers <- manufacturers_80 %>%
-  bind_rows(tibble(manufacturer_std = "Other", n = other_manufacturers_n)) %>%
-  mutate(manufacturer_std = factor(manufacturer_std, levels = c("Other", rev(manufacturers_80$manufacturer_std))))
+  bind_rows(tibble(manufacturer_std = "Other(s)", n = other_manufacturers_n)) %>%
+  mutate(manufacturer_std = factor(manufacturer_std, levels = c("Other(s)", rev(manufacturers_80$manufacturer_std))))
 
 n_80_manufacturers <- nrow(manufacturers_80)
 total_80_manufacturer_reports <- sum(manufacturers_80$n)
@@ -713,13 +717,15 @@ manufacturers_table_data <- manufacturers_80
 
 ```{r manufacturer-plot}
 #| label: fig-manufacturers
-#| fig-cap: !expr sprintf("Manufacturers representing approximately 80%% of reports (%s%%), plus 'Other' category", pct_80_manufacturer)
+#| fig-cap: !expr sprintf("Manufacturers representing approximately 80%% of reports (%s%%), plus 'Other(s)' category", pct_80_manufacturer)
 #| fig-width: 8
 #| fig-height: !expr max(6.5, (n_80_manufacturers + 1) * 0.35)
 
 ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
-  geom_col(aes(fill = manufacturer_std == "Other"), alpha = 0.8, show.legend = FALSE) +
-  scale_fill_manual(values = c("FALSE" = colors$secondary, "TRUE" = "gray70")) +
+  geom_col(aes(fill = manufacturer_std == "Other(s)", alpha = manufacturer_std == "Other(s)"), 
+           show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$secondary, "TRUE" = "gray85")) +
+  scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
@@ -790,10 +796,10 @@ if(nrow(brands_80) == 0) {
 # Calculate "Other" category
 other_brands_n <- total_all_brands - sum(brands_80$n)
 
-# Add "Other" row for plotting
+# Add "Other(s)" row for plotting
 top_brands <- brands_80 %>%
-  bind_rows(tibble(brand_std = "Other", n = other_brands_n)) %>%
-  mutate(brand_std = factor(brand_std, levels = c("Other", rev(brands_80$brand_std))))
+  bind_rows(tibble(brand_std = "Other(s)", n = other_brands_n)) %>%
+  mutate(brand_std = factor(brand_std, levels = c("Other(s)", rev(brands_80$brand_std))))
 
 n_80_brands <- nrow(brands_80)
 total_80_brand_reports <- sum(brands_80$n)
@@ -815,13 +821,15 @@ brands_table_data <- brands_80
 
 ```{r brand-plot}
 #| label: fig-brands
-#| fig-cap: !expr sprintf("Device brands representing approximately 80%% of reports (%s%%), plus 'Other' category", pct_80_brand)
+#| fig-cap: !expr sprintf("Device brands representing approximately 80%% of reports (%s%%), plus 'Other(s)' category", pct_80_brand)
 #| fig-width: 10
 #| fig-height: !expr max(6, (n_80_brands + 1) * 0.35)
 
 ggplot(top_brands, aes(x = brand_std, y = n)) +
-  geom_col(aes(fill = brand_std == "Other"), alpha = 0.8, show.legend = FALSE) +
-  scale_fill_manual(values = c("FALSE" = colors$primary, "TRUE" = "gray70")) +
+  geom_col(aes(fill = brand_std == "Other(s)", alpha = brand_std == "Other(s)"), 
+           show.legend = FALSE) +
+  scale_fill_manual(values = c("FALSE" = colors$primary, "TRUE" = "gray85")) +
+  scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
   geom_text(aes(label = n), hjust = -0.3, size = 3.5) +
   coord_flip() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
@@ -957,7 +965,7 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
 
 ## Report Metadata
 
-- **Generated**: 2025-11-19 21:39:02
-- **Dataset Version**: 2025-10-24
-- **Total Records Analyzed**: 147
+- **Generated**: 2025-11-20 08:38:46
+- **Dataset Version**: 2025-10-29
+- **Total Records Analyzed**: 268
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
