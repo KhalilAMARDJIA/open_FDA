@@ -6,25 +6,27 @@ def parser_event(data):
         'manufacturer_g1_name' :[],
         'brand_name' :[],
         'device_name' :[],
+        'product_code' :[],
         'product_problems' :[],
         'patient_problems' :[],
         'text' :[]
     }
-
-    # report_number, date_received, manufacturer_g1_name, brand_name, device_name, product_problems, patient_problems, text = [], [], [], [], [], [], [], []
 
     for record in data:
 
         df['report_number'].append(record.get('report_number'))
         df['manufacturer_g1_name'].append(record.get('manufacturer_g1_name'))
         df['date_received'].append(record.get('date_received'))
+        
         try:
-            device_field = record.get('device')[0]
-            df['brand_name'].append(device_field.get('brand_name'))
-            df['device_name'].append(device_field.get('openfda').get('device_name'))
+            device_field = record.get('device', [{}])[0]
+            df['brand_name'].append(device_field.get('brand_name', ''))
+            df['device_name'].append(device_field.get('openfda', {}).get('device_name', ''))
+            df['product_code'].append(device_field.get('device_report_product_code', ''))
         except:
             df['brand_name'].append('')
             df['device_name'].append('')
+            df['product_code'].append('')
 
         df['product_problems'].append(record.get('product_problems'))
         try:

@@ -627,6 +627,169 @@ if(other_brands_n > 0) {{
 kable(brand_table, align = c("c", "l", "r", "r"))
 ```
 
+## Brand Distribution by Product Code
+
+```{{r compute-product-codes}}
+#| echo: false
+
+# Calculate product code statistics with 80% analysis
+product_codes_all <- data %>%
+  filter(!is.na(product_code) & product_code != "") %>%
+  count(product_code, sort = TRUE)
+
+total_all_codes <- sum(product_codes_all$n)
+
+product_codes_all <- product_codes_all %>%
+  mutate(
+    cumulative_n = cumsum(n),
+    cumulative_pct = cumulative_n / total_all_codes
+  )
+
+# Get product codes that account for 80% of data
+product_codes_80 <- product_codes_all %>%
+  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
+  filter(prev_pct < 0.80) %>%
+  select(-prev_pct)
+
+# Ensure we have at least one code
+if(nrow(product_codes_80) == 0) {{
+  product_codes_80 <- product_codes_all %>% slice_head(n = 1)
+}}
+
+# Calculate "Other" category
+other_codes_n <- total_all_codes - sum(product_codes_80$n)
+
+n_80_codes <- nrow(product_codes_80)
+total_80_code_reports <- sum(product_codes_80$n)
+pct_80_code <- round(100 * total_80_code_reports / total_all_codes, 1)
+other_code_pct <- round(100 * other_codes_n / total_all_codes, 1)
+
+product_codes_table_data <- product_codes_80
+```
+
+A total of **`r n_80_codes`** product code(s) account for **`r pct_80_code`%** of all reports with product codes (**`r format(total_80_code_reports, big.mark = ",")`** reports).
+
+```{{r}}
+#| echo: false
+#| results: asis
+if(other_codes_n > 0) {{
+  cat(sprintf("\nThe remaining **%s** reports (**%s%%**) are from other product codes.\n", 
+              format(other_codes_n, big.mark = ","), 
+              other_code_pct))
+}}
+```
+
+```{{r product-code-table}}
+#| label: tbl-product-codes
+#| tbl-cap: !expr sprintf("Product code(s) representing %s%% of reports", pct_80_code)
+
+product_code_table <- product_codes_table_data %>%
+  mutate(
+    Rank = row_number(),
+    `Product Code` = product_code,
+    Reports = format(n, big.mark = ","),
+    `% of Total` = sprintf("%.2f%%", n / total_all_codes * 100)
+  ) %>%
+  select(Rank, `Product Code`, Reports, `% of Total`)
+
+# Add Other(s) row if there are other codes
+if(other_codes_n > 0) {{
+  other_row <- tibble(
+    Rank = NA,
+    `Product Code` = "Other(s)",
+    Reports = format(other_codes_n, big.mark = ","),
+    `% of Total` = sprintf("%.2f%%", other_code_pct)
+  )
+  product_code_table <- bind_rows(product_code_table, other_row)
+}}
+
+kable(product_code_table, align = c("c", "l", "r", "r"))
+```
+
+## Brand Distribution with Product Code Breakdown
+
+The following figure shows the top device brands with their composition by product code.
+
+```{{r brand-by-product-code}}
+#| label: fig-brand-product-code
+#| fig-cap: !expr sprintf("Device brand(s) representing %s%% of reports, colored by product code", pct_80_brand)
+#| fig-width: 8
+#| fig-height: !expr max(8, n_80_brands * 0.5)
+
+# Get top product codes for color palette
+top_product_codes <- product_codes_80$product_code
+
+# Prepare data for stacked bar chart
+brand_product_data <- data %>%
+  filter(brand_std %in% brands_80$brand_std) %>%
+  mutate(
+    product_code_grouped = if_else(
+      product_code %in% top_product_codes & !is.na(product_code) & product_code != "",
+      product_code,
+      "Other(s)"
+    )
+  ) %>%
+  count(brand_std, product_code_grouped) %>%
+  group_by(brand_std) %>%
+  mutate(brand_total = sum(n)) %>%
+  ungroup() %>%
+  arrange(desc(brand_total), brand_std, desc(n))
+
+# Add brands with "Other(s)" if needed
+if(other_brands_n > 0) {{
+  other_brand_data <- data %>%
+    filter(!(brand_std %in% brands_80$brand_std)) %>%
+    mutate(
+      product_code_grouped = if_else(
+        product_code %in% top_product_codes & !is.na(product_code) & product_code != "",
+        product_code,
+        "Other(s)"
+      )
+    ) %>%
+    count(product_code_grouped) %>%
+    mutate(
+      brand_std = "Other(s)",
+      brand_total = other_brands_n
+    ) %>%
+    select(brand_std, product_code_grouped, n, brand_total)
+  
+  brand_product_data <- bind_rows(brand_product_data, other_brand_data)
+}}
+
+# Order brands by total
+brand_order <- brand_product_data %>%
+  distinct(brand_std, brand_total) %>%
+  arrange(brand_total) %>%
+  pull(brand_std)
+
+brand_product_data <- brand_product_data %>%
+  mutate(brand_std = factor(brand_std, levels = brand_order))
+
+# Set color palette
+n_colors <- length(unique(brand_product_data$product_code_grouped))
+color_palette <- if(n_colors <= 8) {{
+  scales::brewer_pal(palette = "Set2")(n_colors)
+}} else {{
+  colorRampPalette(scales::brewer_pal(palette = "Set2")(8))(n_colors)
+}}
+
+ggplot(brand_product_data, aes(x = n, y = brand_std, fill = product_code_grouped)) +
+  geom_col(alpha = 0.8) +
+  scale_fill_manual(values = color_palette) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
+  labs(
+    subtitle = "Report volume by brand and product code",
+    x = "Number of Reports",
+    y = "Brand Name",
+    fill = "Product Code",
+    caption = "Source: FDA MAUDE Database"
+  ) +
+  theme(
+    legend.position = "top",
+    axis.text.y = element_text(size = 10, hjust = 1)
+  )
+```
+
 ## Brand Temporal Trends
 
 The following figure illustrates the cumulative growth of adverse event reports for the top 5 device brands over time.
