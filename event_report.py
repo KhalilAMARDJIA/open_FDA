@@ -10,6 +10,7 @@ from rapidfuzz import fuzz
 from pathlib import Path
 from typing import List, Dict
 from datetime import datetime
+import json
 
 
 # =========================================================
@@ -63,6 +64,39 @@ Config.REPORT_DIR.mkdir(parents=True, exist_ok=True)
 # =========================================================
 # DATA LOADING
 # =========================================================
+def load_metadata(database: str = "event") -> Dict:
+    """Load search metadata from JSON file"""
+    metadata_path = Path(f"saved_csv/{database}_metadata.json")
+    
+    if metadata_path.exists():
+        with open(metadata_path, 'r', encoding='utf-8') as f:
+            metadata = json.load(f)
+        print(f"✓ Loaded metadata from {metadata_path}")
+        return metadata
+    else:
+        print(f"⚠ Warning: No metadata file found at {metadata_path}")
+        return {
+            "query": {
+                "original_query": "Not available",
+                "formatted_query": "Not available",
+                "database": database
+            },
+            "results": {
+                "total_results": 0,
+                "records_retrieved": 0,
+                "records_parsed": 0
+            },
+            "timestamp": {
+                "search_executed": "Not available",
+                "data_last_updated": "Not available"
+            },
+            "api": {
+                "source": "OpenFDA",
+                "endpoint": f"https://api.fda.gov/device/{database}.json"
+            }
+        }
+
+
 def load_data(filepath: str, delimiter: str = "|") -> pd.DataFrame:
     """Load and clean FDA event data"""
     df = pd.read_csv(filepath, sep=delimiter)
@@ -179,6 +213,7 @@ def generate_r_exclusion_list(exclusions: List[str]) -> str:
 # =========================================================
 def generate_quarto_report(df: pd.DataFrame, 
                           stats: Dict,
+                          metadata: Dict = None,
                           output_path: Path = Config.REPORT_DIR / "fda_analysis_report.qmd"):
     """Generate Quarto markdown file with R code chunks"""
     
@@ -406,9 +441,249 @@ Monthly reporting patterns are analyzed using standard statistical methods to id
 For detailed statistical methodology, see @sec-statistical-methods in the Technical Appendix.
 :::
 
+# Manufacturer Analysis
+
+## Top Manufacturers
+
+```{{r compute-manufacturers}}
+#| echo: false
+
+# Calculate manufacturer statistics with 80% analysis
+manufacturers_all <- data %>%
+  count(manufacturer_std, sort = TRUE)
+
+total_all_manufacturers <- sum(manufacturers_all$n)
+
+manufacturers_all <- manufacturers_all %>%
+  mutate(
+    cumulative_n = cumsum(n),
+    cumulative_pct = cumulative_n / total_all_manufacturers
+  )
+
+# Get manufacturers that account for 80% of data
+# Use lag to check if previous row was < 0.80, ensuring we include the manufacturer that crosses 80%
+manufacturers_80 <- manufacturers_all %>%
+  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
+  filter(prev_pct < 0.80) %>%
+  select(-prev_pct)
+
+# Ensure we have at least one manufacturer
+if(nrow(manufacturers_80) == 0) {{
+  manufacturers_80 <- manufacturers_all %>% slice_head(n = 1)
+}}
+
+# Calculate "Other" category
+other_manufacturers_n <- total_all_manufacturers - sum(manufacturers_80$n)
+
+n_80_manufacturers <- nrow(manufacturers_80)
+total_80_manufacturer_reports <- sum(manufacturers_80$n)
+pct_80_manufacturer <- round(100 * total_80_manufacturer_reports / total_reports, 1)
+other_manufacturer_pct <- round(100 * other_manufacturers_n / total_reports, 1)
+
+top_manufacturer <- manufacturers_80$manufacturer_std[1]
+top_manufacturer_count <- manufacturers_80$n[1]
+top_manufacturer_pct <- round(100 * top_manufacturer_count / total_reports, 1)
+
+# Table data (without Other)
+manufacturers_table_data <- manufacturers_80
+```
+
+A total of **`r n_80_manufacturers`** manufacturer(s) account for **`r pct_80_manufacturer`%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports), as shown in @tbl-manufacturers.
+
+```{{r}}
+#| echo: false
+#| results: asis
+if(other_manufacturers_n > 0) {{
+  cat(sprintf("\nThe remaining **%s** reports (**%s%%**) are from other manufacturers.\n", 
+              format(other_manufacturers_n, big.mark = ","), 
+              other_manufacturer_pct))
+}}
+```
+
+The top manufacturer, **`r top_manufacturer`**, accounts for **`r format(top_manufacturer_count, big.mark = ",")`** reports (**`r top_manufacturer_pct`%** of total).
+
+The following table presents the detailed breakdown of manufacturers and their report volumes.
+
+```{{r manufacturer-table}}
+#| label: tbl-manufacturers
+#| tbl-cap: !expr sprintf("Manufacturer(s) representing %s%% of reports", pct_80_manufacturer)
+
+manufacturer_table <- manufacturers_table_data %>%
+  mutate(
+    Rank = row_number(),
+    Manufacturer = manufacturer_std,
+    Reports = format(n, big.mark = ","),
+    `% of Total` = sprintf("%.2f%%", n / total_reports * 100)
+  ) %>%
+  select(Rank, Manufacturer, Reports, `% of Total`)
+
+# Add Other(s) row if there are other manufacturers
+if(other_manufacturers_n > 0) {{
+  other_row <- tibble(
+    Rank = NA,
+    Manufacturer = "Other(s)",
+    Reports = format(other_manufacturers_n, big.mark = ","),
+    `% of Total` = sprintf("%.2f%%", other_manufacturer_pct)
+  )
+  manufacturer_table <- bind_rows(manufacturer_table, other_row)
+}}
+
+kable(manufacturer_table, align = c("c", "l", "r", "r"))
+```
+
+
+# Device Brand Analysis
+
+## Top Device Brands
+
+
+
+```{{r compute-brands}}
+#| echo: false
+
+# Calculate brand statistics with 80% analysis
+brands_all <- data %>%
+  count(brand_std, sort = TRUE)
+
+total_all_brands <- sum(brands_all$n)
+
+brands_all <- brands_all %>%
+  mutate(
+    cumulative_n = cumsum(n),
+    cumulative_pct = cumulative_n / total_all_brands
+  )
+
+# Get brands that account for 80% of data
+# Use lag to check if previous row was < 0.80, ensuring we include the brand that crosses 80%
+brands_80 <- brands_all %>%
+  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
+  filter(prev_pct < 0.80) %>%
+  select(-prev_pct)
+
+# Ensure we have at least one brand
+if(nrow(brands_80) == 0) {{
+  brands_80 <- brands_all %>% slice_head(n = 1)
+}}
+
+# Calculate "Other" category
+other_brands_n <- total_all_brands - sum(brands_80$n)
+
+n_80_brands <- nrow(brands_80)
+total_80_brand_reports <- sum(brands_80$n)
+pct_80_brand <- round(100 * total_80_brand_reports / total_reports, 1)
+other_brand_pct <- round(100 * other_brands_n / total_reports, 1)
+
+# Keep top 5 for cumulative analysis
+top_5_brands <- brands_80 %>% head(5)
+
+top_brand <- brands_80$brand_std[1]
+top_brand_count <- brands_80$n[1]
+top_brand_pct <- round(100 * top_brand_count / total_reports, 1)
+
+# Table data (without Other)
+brands_table_data <- brands_80
+```
+
+A total of **`r n_80_brands`** device brand(s) account for **`r pct_80_brand`%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports), as shown in @tbl-brands.
+
+```{{r}}
+#| echo: false
+#| results: asis
+if(other_brands_n > 0) {{
+  cat(sprintf("\nThe remaining **%s** reports (**%s%%**) are from other brands.\n", 
+              format(other_brands_n, big.mark = ","), 
+              other_brand_pct))
+}}
+```
+
+The top device brand, **`r top_brand`**, accounts for **`r format(top_brand_count, big.mark = ",")`** reports (**`r top_brand_pct`%** of total).
+
+The following table presents the detailed breakdown of device brands and their report volumes.
+
+```{{r brand-table}}
+#| label: tbl-brands
+#| tbl-cap: !expr sprintf("Device brand(s) representing %s%% of reports", pct_80_brand)
+
+brand_table <- brands_table_data %>%
+  mutate(
+    Rank = row_number(),
+    Brand = brand_std,
+    Reports = format(n, big.mark = ","),
+    `% of Total` = sprintf("%.2f%%", n / total_reports * 100)
+  ) %>%
+  select(Rank, Brand, Reports, `% of Total`)
+
+# Add Other(s) row if there are other brands
+if(other_brands_n > 0) {{
+  other_row <- tibble(
+    Rank = NA,
+    Brand = "Other(s)",
+    Reports = format(other_brands_n, big.mark = ","),
+    `% of Total` = sprintf("%.2f%%", other_brand_pct)
+  )
+  brand_table <- bind_rows(brand_table, other_row)
+}}
+
+kable(brand_table, align = c("c", "l", "r", "r"))
+```
+
+## Brand Temporal Trends
+
+The following figure illustrates the cumulative growth of adverse event reports for the top 5 device brands over time.
+
+```{{r brand-cumulative}}
+#| label: fig-brand-cumulative
+#| fig-cap: "Cumulative adverse event reports by top 5 brands"
+#| fig-width: 8
+#| fig-height: 6
+
+brand_cumulative <- data %>%
+  filter(brand_std %in% top_5_brands$brand_std) %>%
+  arrange(brand_std, date_received) %>%
+  group_by(brand_std) %>%
+  mutate(
+    cumulative = row_number(),
+    brand_label = str_to_title(map_chr(brand_std, shorten_brand_name))
+  ) %>%
+  ungroup()
+
+# Calculate appropriate date breaks
+date_range_years <- as.numeric(difftime(max(data$date_received), 
+                                        min(data$date_received), 
+                                        units = "days")) / 365.25
+
+if(date_range_years > 2) {{
+  date_labels <- "%Y"
+  date_breaks <- "1 year"
+}} else {{
+  date_labels <- "%b %Y"
+  date_breaks <- "3 months"
+}}
+
+ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_label)) +
+  geom_line(linewidth = 1.2) +
+  scale_color_brewer(palette = "BrBG") +
+  scale_x_date(date_labels = date_labels, date_breaks = date_breaks) +
+  scale_y_continuous(labels = comma, breaks = pretty_breaks()) +
+  labs(
+    x = "Date Received",
+    y = "Cumulative Reports",
+    color = "Brand Name",
+    caption = "Source: FDA MAUDE Database"
+  ) +
+  theme(
+    legend.position = c(0.02, 0.98),
+    legend.justification = c(0, 1),
+    legend.background = element_rect(fill = "white", color = "black", linewidth = 0.3),
+    legend.margin = margin(4, 6, 4, 6)
+  )
+```
+
 # Temporal Trend Analysis
 
 ## Overall Reporting Trends
+
+The following figure presents the monthly trend of adverse event reports over the analysis period.
 
 ```{{=typst}}
 #set page(
@@ -581,13 +856,13 @@ if(n_significant_peaks == 0 && n_significant_valleys == 0) {{
 
 ## Cumulative Reports Over Time
 
+The following figure shows the cumulative accumulation of adverse event reports throughout the study period.
+
 ```{{=typst}}
 #set page(
   flipped: true,
 )
 ```
-
-
 
 ```{{r cumulative-plot}}
 #| label: fig-cumulative-reports
@@ -684,6 +959,12 @@ other_pct <- round(100 * other_problems_n / total_all_product_problems, 1)
 
 ## Product Problems Analysis
 
+A total of **`r n_80_problems`** product problem type(s) account for **`r pct_80`%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences).
+
+The remaining **`r format(other_problems_n, big.mark = ",")`** problem occurrences (**`r other_pct`%**) are categorized as "Other(s)".
+
+The following figure displays the most frequently reported product problems, accounting for the majority of problem occurrences.
+
 ```{{r product-problems-plot}}
 #| label: fig-product-problems
 #| fig-cap: !expr sprintf("Product problems representing %s%% of problem occurrences, plus Other(s) category", pct_80)
@@ -711,10 +992,6 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
     plot.margin = margin(5.5, 5.5, 5.5, 90, "pt")
   )
 ```
-
-A total of **`r n_80_problems`** product problem type(s) account for **`r pct_80`%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences).
-
-The remaining **`r format(other_problems_n, big.mark = ",")`** problem occurrences (**`r other_pct`%**) are categorized as "Other(s)".
 
 **All Product Problems Representing `r pct_80`% of Data:**
 
@@ -790,6 +1067,12 @@ other_patient_pct <- round(100 * other_patient_problems_n / total_all_patient_pr
 
 ## Patient Problems Analysis
 
+A total of **`r n_80_patient_problems`** patient problem type(s) account for **`r pct_80_patient`%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences).
+
+The remaining **`r format(other_patient_problems_n, big.mark = ",")`** problem occurrences (**`r other_patient_pct`%**) are categorized as "Other(s)".
+
+The following figure presents the most frequently reported patient problems associated with these adverse events.
+
 ```{{r patient-problems-plot}}
 #| label: fig-patient-problems
 #| fig-cap: !expr sprintf("Patient problems representing %s%% of problem occurrences, plus Other(s) category", pct_80_patient)
@@ -816,10 +1099,6 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
   )
 ```
 
-A total of **`r n_80_patient_problems`** patient problem type(s) account for **`r pct_80_patient`%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences).
-
-The remaining **`r format(other_patient_problems_n, big.mark = ",")`** problem occurrences (**`r other_patient_pct`%**) are categorized as "Other(s)".
-
 **All Patient Problems Representing `r pct_80_patient`% of Data:**
 
 ```{{r all-patient-table}}
@@ -840,288 +1119,6 @@ for(i in 1:nrow(all_80_patient)) {{
 }}
 ```
 
-# Manufacturer Analysis
-
-## Top Manufacturers
-
-```{{r compute-manufacturers}}
-#| echo: false
-
-# Calculate manufacturer statistics with 80% analysis
-manufacturers_all <- data %>%
-  count(manufacturer_std, sort = TRUE)
-
-total_all_manufacturers <- sum(manufacturers_all$n)
-
-manufacturers_all <- manufacturers_all %>%
-  mutate(
-    cumulative_n = cumsum(n),
-    cumulative_pct = cumulative_n / total_all_manufacturers
-  )
-
-# Get manufacturers that account for 80% of data
-# Use lag to check if previous row was < 0.80, ensuring we include the manufacturer that crosses 80%
-manufacturers_80 <- manufacturers_all %>%
-  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
-  filter(prev_pct < 0.80) %>%
-  select(-prev_pct)
-
-# Ensure we have at least one manufacturer
-if(nrow(manufacturers_80) == 0) {{
-  manufacturers_80 <- manufacturers_all %>% slice_head(n = 1)
-}}
-
-# Calculate "Other" category
-other_manufacturers_n <- total_all_manufacturers - sum(manufacturers_80$n)
-
-# Add "Other(s)" row for plotting
-top_manufacturers <- manufacturers_80 %>%
-  bind_rows(tibble(manufacturer_std = "Other(s)", n = other_manufacturers_n)) %>%
-  mutate(manufacturer_std = factor(manufacturer_std, levels = c("Other(s)", rev(manufacturers_80$manufacturer_std))))
-
-n_80_manufacturers <- nrow(manufacturers_80)
-total_80_manufacturer_reports <- sum(manufacturers_80$n)
-pct_80_manufacturer <- round(100 * total_80_manufacturer_reports / total_reports, 1)
-other_manufacturer_pct <- round(100 * other_manufacturers_n / total_reports, 1)
-
-top_manufacturer <- manufacturers_80$manufacturer_std[1]
-top_manufacturer_count <- manufacturers_80$n[1]
-top_manufacturer_pct <- round(100 * top_manufacturer_count / total_reports, 1)
-
-# Table data (without Other)
-manufacturers_table_data <- manufacturers_80
-```
-
-```{{r manufacturer-plot}}
-#| label: fig-manufacturers
-#| fig-cap: !expr sprintf("Manufacturers representing %s%% of reports, plus Other(s) category", pct_80_manufacturer)
-#| fig-width: 10
-#| fig-height: !expr max(6.5, (n_80_manufacturers + 1) * 0.4)
-
-ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
-  geom_col(aes(fill = manufacturer_std == "Other(s)", alpha = manufacturer_std == "Other(s)"), 
-           show.legend = FALSE) +
-  scale_fill_manual(values = c("FALSE" = colors$secondary, "TRUE" = "gray85")) +
-  scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
-  geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
-  coord_flip() +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.15)), position = "right") +
-  scale_x_discrete(expand = expansion(add = c(0.6, 0.6))) +
-  labs(
-    x = "Manufacturer",
-    y = "Number of Reports",
-    caption = "Source: FDA MAUDE Database"
-  ) +
-  theme(
-    axis.text.y = element_text(size = 11, hjust = 1),  # Increased to 11 for better readability
-    plot.margin = margin(5.5, 5.5, 5.5, 90, "pt")
-  )
-```
-
-A total of **`r n_80_manufacturers`** manufacturer(s) account for **`r pct_80_manufacturer`%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports).
-
-```{{r}}
-#| echo: false
-#| results: asis
-if(other_manufacturers_n > 0) {{
-  cat(sprintf("\nThe remaining **%s** reports (**%s%%**) are from other manufacturers.\n", 
-              format(other_manufacturers_n, big.mark = ","), 
-              other_manufacturer_pct))
-}}
-```
-
-The top manufacturer, **`r top_manufacturer`**, accounts for **`r format(top_manufacturer_count, big.mark = ",")`** reports (**`r top_manufacturer_pct`%** of total).
-
-```{{r manufacturer-table}}
-#| label: tbl-manufacturers
-#| tbl-cap: !expr sprintf("Manufacturer(s) representing %s%% of reports", pct_80_manufacturer)
-
-manufacturer_table <- manufacturers_table_data %>%
-  mutate(
-    Rank = row_number(),
-    Manufacturer = manufacturer_std,
-    Reports = format(n, big.mark = ","),
-    `% of Total` = sprintf("%.2f%%", n / total_reports * 100)
-  ) %>%
-  select(Rank, Manufacturer, Reports, `% of Total`)
-
-kable(manufacturer_table, align = c("c", "l", "r", "r"))
-```
-
-
-# Device Brand Analysis
-
-## Top Device Brands
-
-
-
-```{{r compute-brands}}
-#| echo: false
-
-# Calculate brand statistics with 80% analysis
-brands_all <- data %>%
-  count(brand_std, sort = TRUE)
-
-total_all_brands <- sum(brands_all$n)
-
-brands_all <- brands_all %>%
-  mutate(
-    cumulative_n = cumsum(n),
-    cumulative_pct = cumulative_n / total_all_brands
-  )
-
-# Get brands that account for 80% of data
-# Use lag to check if previous row was < 0.80, ensuring we include the brand that crosses 80%
-brands_80 <- brands_all %>%
-  mutate(prev_pct = lag(cumulative_pct, default = 0)) %>%
-  filter(prev_pct < 0.80) %>%
-  select(-prev_pct)
-
-# Ensure we have at least one brand
-if(nrow(brands_80) == 0) {{
-  brands_80 <- brands_all %>% slice_head(n = 1)
-}}
-
-# Calculate "Other" category
-other_brands_n <- total_all_brands - sum(brands_80$n)
-
-# Add "Other(s)" row for plotting
-top_brands <- brands_80 %>%
-  bind_rows(tibble(brand_std = "Other(s)", n = other_brands_n)) %>%
-  mutate(brand_std = factor(brand_std, levels = c("Other(s)", rev(brands_80$brand_std))))
-
-n_80_brands <- nrow(brands_80)
-total_80_brand_reports <- sum(brands_80$n)
-pct_80_brand <- round(100 * total_80_brand_reports / total_reports, 1)
-other_brand_pct <- round(100 * other_brands_n / total_reports, 1)
-
-# Keep top 5 for cumulative analysis
-top_5_brands <- brands_80 %>% head(5)
-
-top_brand <- brands_80$brand_std[1]
-top_brand_count <- brands_80$n[1]
-top_brand_pct <- round(100 * top_brand_count / total_reports, 1)
-
-# Table data (without Other)
-brands_table_data <- brands_80
-```
-
-
-
-```{{r brand-plot}}
-#| label: fig-brands
-#| fig-cap: !expr sprintf("Device brands representing %s%% of reports, plus Other(s) category", pct_80_brand)
-#| fig-width: 12
-#| fig-height: !expr max(6, (n_80_brands + 1) * 0.4)
-
-ggplot(top_brands, aes(x = brand_std, y = n)) +
-  geom_col(aes(fill = brand_std == "Other(s)", alpha = brand_std == "Other(s)"), 
-           show.legend = FALSE) +
-  scale_fill_manual(values = c("FALSE" = colors$primary, "TRUE" = "gray85")) +
-  scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
-  geom_text(aes(label = n), hjust = -0.3, size = 3.5) +
-  coord_flip() +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.12)), position = "right") +
-  scale_x_discrete(expand = expansion(add = c(0.6, 0.6))) +
-  labs(
-    x = "Brand",
-    y = "Number of Reports",
-    caption = "Source: FDA MAUDE Database"
-  ) +
-  theme(
-    axis.text.y = element_text(size = 11, hjust = 1),  # Increased to 11 for better readability
-    plot.margin = margin(5.5, 5.5, 5.5, 110, "pt")
-  )
-```
-
-
-
-A total of **`r n_80_brands`** device brand(s) account for **`r pct_80_brand`%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports).
-
-```{{r}}
-#| echo: false
-#| results: asis
-if(other_brands_n > 0) {{
-  cat(sprintf("\nThe remaining **%s** reports (**%s%%**) are from other brands.\n", 
-              format(other_brands_n, big.mark = ","), 
-              other_brand_pct))
-}}
-```
-
-The top device brand, **`r top_brand`**, accounts for **`r format(top_brand_count, big.mark = ",")`** reports (**`r top_brand_pct`%** of total).
-
-```{{=typst}}
-#set page(
-  flipped: false,
-)
-```
-
-```{{r brand-table}}
-#| label: tbl-brands
-#| tbl-cap: !expr sprintf("Device brand(s) representing %s%% of reports", pct_80_brand)
-
-brand_table <- brands_table_data %>%
-  mutate(
-    Rank = row_number(),
-    Brand = brand_std,
-    Reports = format(n, big.mark = ","),
-    `% of Total` = sprintf("%.2f%%", n / total_reports * 100)
-  ) %>%
-  select(Rank, Brand, Reports, `% of Total`)
-
-kable(brand_table, align = c("c", "l", "r", "r"))
-```
-
-## Brand Temporal Trends
-
-```{{r brand-cumulative}}
-#| label: fig-brand-cumulative
-#| fig-cap: "Cumulative adverse event reports by top 5 brands"
-#| fig-width: 8
-#| fig-height: 6
-
-brand_cumulative <- data %>%
-  filter(brand_std %in% top_5_brands$brand_std) %>%
-  arrange(brand_std, date_received) %>%
-  group_by(brand_std) %>%
-  mutate(
-    cumulative = row_number(),
-    brand_label = str_to_title(map_chr(brand_std, shorten_brand_name))
-  ) %>%
-  ungroup()
-
-# Calculate appropriate date breaks
-date_range_years <- as.numeric(difftime(max(data$date_received), 
-                                        min(data$date_received), 
-                                        units = "days")) / 365.25
-
-if(date_range_years > 2) {{
-  date_labels <- "%Y"
-  date_breaks <- "1 year"
-}} else {{
-  date_labels <- "%b %Y"
-  date_breaks <- "3 months"
-}}
-
-ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_label)) +
-  geom_line(linewidth = 1.2) +
-  scale_color_brewer(palette = "BrBG") +
-  scale_x_date(date_labels = date_labels, date_breaks = date_breaks) +
-  scale_y_continuous(labels = comma, breaks = pretty_breaks()) +
-  labs(
-    x = "Date Received",
-    y = "Cumulative Reports",
-    color = "Brand Name",
-    caption = "Source: FDA MAUDE Database"
-  ) +
-  theme(
-    legend.position = c(0.02, 0.98),
-    legend.justification = c(0, 1),
-    legend.background = element_rect(fill = "white", color = "black", linewidth = 0.3),
-    legend.margin = margin(4, 6, 4, 6)
-  )
-```
-
 # Technical Appendix
 
 ## Data Source
@@ -1138,6 +1135,24 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
 - **Report Generation**: Quarto for reproducible analytics
 
 ## Detailed Methodology
+
+### Data Query Information {{#sec-query-info}}
+
+**Search Query**: {metadata.get('query', {}).get('original_query', 'Not available') if metadata else 'Not available'}
+
+**OpenFDA Database**: {metadata.get('query', {}).get('database', 'event') if metadata else 'event'}
+
+**API Endpoint**: {metadata.get('api', {}).get('endpoint', 'https://api.fda.gov/device/event.json') if metadata else 'https://api.fda.gov/device/event.json'}
+
+**Search Executed**: {metadata.get('timestamp', {}).get('search_executed', 'Not available') if metadata else 'Not available'}
+
+**Data Last Updated**: {metadata.get('timestamp', {}).get('data_last_updated', 'Not available') if metadata else 'Not available'}
+
+**Total Results**: {metadata.get('results', {}).get('total_results', 0):,} records{' found in OpenFDA database' if metadata else ''}
+
+**Records Retrieved**: {metadata.get('results', {}).get('records_retrieved', 0):,} records
+
+**Records Analyzed**: {stats['total_reports']:,} records (after data cleaning)
 
 ### Fuzzy Matching Algorithm {{#sec-fuzzy-matching-details}}
 
@@ -1231,6 +1246,10 @@ def run_analysis_with_report(data_path: str = Config.DATA_PATH):
     print("STARTING FDA ADVERSE EVENT ANALYSIS WITH REPORT GENERATION")
     print("="*60 + "\n")
     
+    # Load metadata
+    database = "event"  # Default to event database
+    metadata = load_metadata(database)
+    
     # Load and prepare data
     df = load_data(data_path, Config.DELIMITER)
     df = add_standardized_columns(
@@ -1247,8 +1266,8 @@ def run_analysis_with_report(data_path: str = Config.DATA_PATH):
     # Get statistics
     stats = get_summary_statistics(df)
     
-    # Generate Quarto report
-    report_path = generate_quarto_report(df, stats)
+    # Generate Quarto report with metadata
+    report_path = generate_quarto_report(df, stats, metadata)
     
     print("\n" + "="*60)
     print("✓ ANALYSIS COMPLETE")
