@@ -188,11 +188,13 @@ The search of the FDA Manufacturer and User Facility Device Experience (MAUDE) d
 
 ## Data Standardization and Fuzzy Matching
 
-The analysis employs fuzzy matching algorithms to standardize manufacturer and brand names, addressing inconsistencies in naming conventions across reports. FDA MAUDE reports often contain variations in manufacturer and brand name spelling, capitalization, and formatting (e.g., different spellings, capitalizations, and legal entity suffixes such as "INC", "Inc.", or "LLC").
+The analysis uses automated text matching to standardize manufacturer and brand names across reports. FDA MAUDE reports often contain variations in spelling, capitalization, and formatting (e.g., "INC", "Inc.", or "LLC").
 
-**Fuzzy String Matching Approach**: Textually similar names are identified and grouped using the Levenshtein distance algorithm, which calculates the minimum number of single-character edits needed to transform one string into another. This standardization process uses the **RapidFuzz** library with partial ratio matching.
+Names with ≥75% similarity are grouped together under a single standardized name. This reduces data fragmentation and provides more accurate counts.
 
-**Matching Thresholds**: Manufacturer names with ≥65% similarity and brand names with ≥75% similarity are consolidated under a canonical representation (typically the shortest variant). This reduces artificial fragmentation in the data and provides more accurate reporting volume estimates per manufacturer and brand.
+::: {.callout-note}
+For technical details on the fuzzy matching algorithm, see @sec-fuzzy-matching-details in the Technical Appendix.
+:::
 
 ## Problem Classification and Data Quality Filters
 
@@ -205,31 +207,41 @@ Patient and product problems are extracted and categorized, excluding non-inform
 - Total problem occurrences can exceed the total number of reports
 - Each problem occurrence is counted separately to identify the most frequent failure modes and issues
 
-Non-informative categories are excluded from both patient and product problem analyses. For the complete list of excluded categories, see @sec-exclusion-criteria in the Technical Appendix.
+::: {.callout-note}
+For the complete list of excluded categories, see @sec-exclusion-criteria in the Technical Appendix.
+:::
 
 ## Concentration-Based Analysis Methodology
 
-This analysis employs a concentration-based approach to identify the critical few problems, manufacturers, and brands that account for the majority of occurrences. Rather than arbitrarily selecting a fixed number (e.g., "top 10"), we dynamically identify categories that collectively represent approximately 80% of all reported occurrences.
+This analysis identifies the critical few problems, manufacturers, and brands that account for the majority of occurrences. Rather than selecting an arbitrary "top 10", we dynamically identify categories that collectively represent approximately 80% of all reported occurrences.
 
-**Implementation**: For each category (problems, manufacturers, brands), items are ranked by frequency and cumulative percentages calculated. Items are included in the main analysis if the previous item's cumulative percentage was below 80%. This ensures complete categories are included—no category is split between the main analysis and "Other".
+Categories are ranked by frequency, and those accounting for approximately 80% of the data are analyzed in detail. The remaining items are grouped as "Other(s)". This approach ensures no category is artificially split.
 
-**Key Features**: The exact percentage may exceed 80% to maintain category integrity. All categories meeting the threshold are listed, not just a predetermined number. The "Other" category provides perspective on the long-tail distribution of remaining items.
+::: {.callout-note}
+For implementation details, see @sec-concentration-methodology in the Technical Appendix.
+:::
 
 ## Statistical Analysis of Temporal Trends
 
-**Variability Metrics**: Standard Deviation (SD) measures the typical spread of monthly reports around the average. Coefficient of Variation (CV) expresses SD as a percentage of the mean (CV = SD/Mean × 100), enabling relative comparison. CV < 15% indicates low variability, 15-30% moderate, and >30% high variability in reporting patterns.
+Monthly reporting patterns are analyzed using standard statistical methods to identify unusual increases or decreases in reporting activity.
 
-**Outlier Detection**: Z-scores measure how many standard deviations each month's report count deviates from the mean. Months with z-scores ≥ |2| are flagged as statistically significant outliers (p < 0.05), indicating unusually high (peaks) or low (valleys) reporting activity beyond approximately 95% of normal distribution.
+**Variability Metrics**: Standard deviation and coefficient of variation measure how much monthly reports fluctuate around the average.
+
+**Peak and Valley Detection**: Months with unusually high or low reporting (more than 2 standard deviations from average) are flagged as statistically significant.
+
+::: {.callout-note}
+For detailed statistical methodology, see @sec-statistical-methods in the Technical Appendix.
+:::
+
+# Temporal Trend Analysis
+
+## Overall Reporting Trends
 
 ```{=typst}
 #set page(
   flipped: true,
 )
 ```
-
-# Temporal Trend Analysis
-
-## Overall Reporting Trends
 
 ```{r temporal-analysis}
 #| label: fig-temporal-trends
@@ -273,6 +285,12 @@ ggplot(monthly_plot_data, aes(x = year_month, y = n)) +
     caption = "Source: FDA MAUDE Database"
   ) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{=typst}
+#set page(
+  flipped: false,
+)
 ```
 
 ```{r compute-trend-stats}
@@ -343,77 +361,74 @@ if(n_significant_valleys > 0) {
 sd_monthly_rounded <- round(sd_monthly, 1)
 cv <- round(100 * sd_monthly / mean_monthly, 1)  # Coefficient of variation
 ```
-```{=typst}
-#set page(
-  flipped: false,
-)
-```
 
 
 ## Statistical Trend Analysis
 
 **Reporting Variability:** The average monthly reporting rate is **`r avg_monthly_reports`** reports (SD = **`r sd_monthly_rounded`**, CV = **`r cv`%**).
 
+```{r outlier-summary}
+#| echo: false
+#| results: asis
+
+# Dynamic output based on presence of peaks and/or valleys
+if(n_significant_peaks == 0 && n_significant_valleys == 0) {
+  cat("
+**Outlier Detection**: No statistically significant peaks or valleys detected at 95% confidence level (|z| < 2).
+")
+} else {
+  # Show peaks if found
+  if(n_significant_peaks > 0) {
+    cat("
 **Statistically Significant Peaks** (≥2 SD above mean, p < 0.05):
 
-```{r peaks-bullets}
-#| echo: false
-#| results: asis
-
-if(n_significant_peaks > 0) {
-  cat(sprintf("
-%d month(s) identified:
+")
+    cat(sprintf("%d month(s) identified:
 
 ", n_significant_peaks))
-  for(i in 1:nrow(significant_peaks)) {
-    cat(sprintf("- **%s**: %s reports (z=%.2f, +%s%%)
+    for(i in 1:nrow(significant_peaks)) {
+      cat(sprintf("- **%s**: %s reports (z=%.2f, +%s%%)
 ",
-                significant_peaks$month_label[i],
-                format(significant_peaks$n[i], big.mark = ","),
-                significant_peaks$z_score_rounded[i],
-                significant_peaks$deviation_pct[i]))
-  }
-} else {
-  cat("
-No statistically significant peaks detected at 95% confidence level.
+                  significant_peaks$month_label[i],
+                  format(significant_peaks$n[i], big.mark = ","),
+                  significant_peaks$z_score_rounded[i],
+                  significant_peaks$deviation_pct[i]))
+    }
+    cat("
 ")
-}
-```
-
+  }
+  
+  # Show valleys if found
+  if(n_significant_valleys > 0) {
+    cat("
 **Statistically Significant Valleys** (≥2 SD below mean, p < 0.05):
 
-```{r valleys-bullets}
-#| echo: false
-#| results: asis
-
-if(n_significant_valleys > 0) {
-  cat(sprintf("
-%d month(s) identified:
+")
+    cat(sprintf("%d month(s) identified:
 
 ", n_significant_valleys))
-  for(i in 1:nrow(significant_valleys)) {
-    cat(sprintf("- **%s**: %s reports (z=%.2f, -%s%%)
+    for(i in 1:nrow(significant_valleys)) {
+      cat(sprintf("- **%s**: %s reports (z=%.2f, -%s%%)
 ",
-                significant_valleys$month_label[i],
-                format(significant_valleys$n[i], big.mark = ","),
-                significant_valleys$z_score_rounded[i],
-                significant_valleys$deviation_pct[i]))
-  }
-} else {
-  cat("
-No statistically significant valleys detected at 95% confidence level.
+                  significant_valleys$month_label[i],
+                  format(significant_valleys$n[i], big.mark = ","),
+                  significant_valleys$z_score_rounded[i],
+                  significant_valleys$deviation_pct[i]))
+    }
+    cat("
 ")
+  }
 }
 ```
 
+
+## Cumulative Reports Over Time
 
 ```{=typst}
 #set page(
   flipped: true,
 )
 ```
-
-## Cumulative Reports Over Time
 
 
 
@@ -514,9 +529,9 @@ other_pct <- round(100 * other_problems_n / total_all_product_problems, 1)
 
 ```{r product-problems-plot}
 #| label: fig-product-problems
-#| fig-cap: !expr sprintf("Product problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other(s)' category", pct_80)
+#| fig-cap: !expr sprintf("Product problems representing %s%% of problem occurrences, plus Other(s) category", pct_80)
 #| fig-width: 8
-#| fig-height: !expr max(10, (n_80_problems + 1) * 0.4)
+#| fig-height: !expr max(10, (n_80_problems + 1) * 0.45)
 
 ggplot(product_problems_plot, aes(x = problems, y = n)) +
   geom_col(aes(fill = problems == "Other(s)", alpha = problems == "Other(s)"), 
@@ -617,9 +632,9 @@ other_patient_pct <- round(100 * other_patient_problems_n / total_all_patient_pr
 
 ```{r patient-problems-plot}
 #| label: fig-patient-problems
-#| fig-cap: !expr sprintf("Patient problems representing approximately 80%% of problem occurrences (%s%%), plus 'Other(s)' category", pct_80_patient)
+#| fig-cap: !expr sprintf("Patient problems representing %s%% of problem occurrences, plus Other(s) category", pct_80_patient)
 #| fig-width: 8
-#| fig-height: !expr max(10, (n_80_patient_problems + 1) * 0.4)
+#| fig-height: !expr max(10, (n_80_patient_problems + 1) * 0.45)
 
 ggplot(patient_problems_plot, aes(x = problems, y = n)) +
   geom_col(aes(fill = problems == "Other(s)", alpha = problems == "Other(s)"), 
@@ -717,9 +732,9 @@ manufacturers_table_data <- manufacturers_80
 
 ```{r manufacturer-plot}
 #| label: fig-manufacturers
-#| fig-cap: !expr sprintf("Manufacturers representing approximately 80%% of reports (%s%%), plus 'Other(s)' category", pct_80_manufacturer)
+#| fig-cap: !expr sprintf("Manufacturers representing %s%% of reports, plus Other(s) category", pct_80_manufacturer)
 #| fig-width: 8
-#| fig-height: !expr max(6.5, (n_80_manufacturers + 1) * 0.35)
+#| fig-height: !expr max(6.5, (n_80_manufacturers + 1) * 0.4)
 
 ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
   geom_col(aes(fill = manufacturer_std == "Other(s)", alpha = manufacturer_std == "Other(s)"), 
@@ -739,7 +754,17 @@ ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
 
 A total of **`r n_80_manufacturers`** manufacturer(s) account for **`r pct_80_manufacturer`%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports).
 
-The remaining **`r format(other_manufacturers_n, big.mark = ",")`** reports (**`r other_manufacturer_pct`%**) are from other manufacturers.
+```{r}
+#| echo: false
+#| results: asis
+if(other_manufacturers_n > 0) {
+  cat(sprintf("
+The remaining **%s** reports (**%s%%**) are from other manufacturers.
+", 
+              format(other_manufacturers_n, big.mark = ","), 
+              other_manufacturer_pct))
+}
+```
 
 The top manufacturer, **`r top_manufacturer`**, accounts for **`r format(top_manufacturer_count, big.mark = ",")`** reports (**`r top_manufacturer_pct`%** of total).
 
@@ -821,9 +846,9 @@ brands_table_data <- brands_80
 
 ```{r brand-plot}
 #| label: fig-brands
-#| fig-cap: !expr sprintf("Device brands representing approximately 80%% of reports (%s%%), plus 'Other(s)' category", pct_80_brand)
+#| fig-cap: !expr sprintf("Device brands representing %s%% of reports, plus Other(s) category", pct_80_brand)
 #| fig-width: 10
-#| fig-height: !expr max(6, (n_80_brands + 1) * 0.35)
+#| fig-height: !expr max(6, (n_80_brands + 1) * 0.4)
 
 ggplot(top_brands, aes(x = brand_std, y = n)) +
   geom_col(aes(fill = brand_std == "Other(s)", alpha = brand_std == "Other(s)"), 
@@ -845,7 +870,17 @@ ggplot(top_brands, aes(x = brand_std, y = n)) +
 
 A total of **`r n_80_brands`** device brand(s) account for **`r pct_80_brand`%** of all reports (**`r format(total_80_brand_reports, big.mark = ",")`** reports).
 
-The remaining **`r format(other_brands_n, big.mark = ",")`** reports (**`r other_brand_pct`%**) are from other brands.
+```{r}
+#| echo: false
+#| results: asis
+if(other_brands_n > 0) {
+  cat(sprintf("
+The remaining **%s** reports (**%s%%**) are from other brands.
+", 
+              format(other_brands_n, big.mark = ","), 
+              other_brand_pct))
+}
+```
 
 The top device brand, **`r top_brand`**, accounts for **`r format(top_brand_count, big.mark = ",")`** reports (**`r top_brand_pct`%** of total).
 
@@ -936,6 +971,47 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
 - **Visualization**: ggplot2 with custom base R theme
 - **Report Generation**: Quarto for reproducible analytics
 
+## Detailed Methodology
+
+### Fuzzy Matching Algorithm {#sec-fuzzy-matching-details}
+
+**Algorithm**: The analysis uses the Levenshtein distance algorithm, which calculates the minimum number of single-character edits (insertions, deletions, or substitutions) needed to transform one string into another.
+
+**Implementation**: The RapidFuzz library implements partial ratio matching, which finds the best matching substring and calculates similarity as a percentage (0-100%).
+
+**Matching Process**:
+1. Text is normalized: converted to uppercase, special characters removed, whitespace standardized
+2. Similarity scores are calculated between all name pairs
+3. Names with ≥75% similarity are grouped together
+4. The shortest variant in each group becomes the canonical name
+
+**Example**: "MEDTRONIC INC", "Medtronic Inc.", and "MEDTRONIC" would all be grouped under "MEDTRONIC" (shortest variant).
+
+### Concentration-Based Analysis {#sec-concentration-methodology}
+
+**Implementation Details**:
+1. Items are sorted by frequency (descending order)
+2. Cumulative percentages are calculated for each item
+3. Items are included if the *previous* item's cumulative percentage was below 80%
+4. This ensures complete categories—no category is split between main analysis and "Other(s)"
+
+**Key Features**:
+- The exact percentage may exceed 80% to maintain category integrity
+- All categories meeting the threshold are listed, not just a predetermined number
+- The "Other(s)" category provides perspective on the long-tail distribution
+
+### Statistical Methods {#sec-statistical-methods}
+
+**Variability Metrics**:
+- **Standard Deviation (SD)**: Measures the typical spread of monthly reports around the average
+- **Coefficient of Variation (CV)**: Expresses SD as a percentage of the mean (CV = SD/Mean × 100)
+- **Interpretation**: CV < 15% = low variability, 15-30% = moderate, >30% = high variability
+
+**Outlier Detection**:
+- **Z-scores**: Measure how many standard deviations each month's report count deviates from the mean
+- **Threshold**: Months with |z-score| ≥ 2 are flagged as statistically significant (p < 0.05)
+- **Interpretation**: Indicates unusually high (peaks) or low (valleys) reporting activity beyond ~95% of normal distribution
+
 ## Exclusion Criteria {#sec-exclusion-criteria}
 
 **Patient Problems Excluded:**
@@ -965,7 +1041,7 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
 
 ## Report Metadata
 
-- **Generated**: 2025-11-20 12:30:44
-- **Dataset Version**: 2025-10-29
-- **Total Records Analyzed**: 268
+- **Generated**: 2025-11-20 13:04:46
+- **Dataset Version**: 2025-10-16
+- **Total Records Analyzed**: 127
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
