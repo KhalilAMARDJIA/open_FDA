@@ -1129,8 +1129,8 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
 '''
     
-    # Write Quarto file
-    with open(output_path, 'w') as f:
+    # Write Quarto file with UTF-8 encoding (fixes Windows compatibility)
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write(qmd_content)
     
     print(f"✓ Generated Quarto report: {output_path}")

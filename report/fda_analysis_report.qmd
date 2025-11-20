@@ -192,7 +192,7 @@ The analysis employs fuzzy matching algorithms to standardize manufacturer and b
 
 **Fuzzy String Matching Approach**: Textually similar names are identified and grouped using the Levenshtein distance algorithm, which calculates the minimum number of single-character edits needed to transform one string into another. This standardization process uses the **RapidFuzz** library with partial ratio matching.
 
-**Matching Thresholds**: Manufacturer names with ≥75% similarity and brand names with ≥75% similarity are consolidated under a canonical representation (typically the shortest variant). This reduces artificial fragmentation in the data and provides more accurate reporting volume estimates per manufacturer and brand.
+**Matching Thresholds**: Manufacturer names with ≥65% similarity and brand names with ≥75% similarity are consolidated under a canonical representation (typically the shortest variant). This reduces artificial fragmentation in the data and provides more accurate reporting volume estimates per manufacturer and brand.
 
 ## Problem Classification and Data Quality Filters
 
@@ -965,7 +965,7 @@ ggplot(brand_cumulative, aes(x = date_received, y = cumulative, color = brand_la
 
 ## Report Metadata
 
-- **Generated**: 2025-11-20 08:38:46
+- **Generated**: 2025-11-20 12:30:44
 - **Dataset Version**: 2025-10-29
 - **Total Records Analyzed**: 268
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
