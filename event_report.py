@@ -234,8 +234,9 @@ theme_baseR <- function(base_size = 12) {{
         face = "bold",
         margin = margin(b = 20, t = 10)
       ),
-      plot.margin = unit(c(1.5, 1.5, 1, 1.5), "lines"),
-      plot.title.position = "plot"
+      plot.margin = unit(c(1.5, 1.5, 1, 3), "lines"),  # Increased left margin from 1.5 to 3
+      plot.title.position = "plot",
+      axis.text.y = element_text(size = rel(1.0))  # Ensure y-axis text is readable
     )
 }}
 theme_set(theme_baseR())
@@ -686,7 +687,7 @@ other_pct <- round(100 * other_problems_n / total_all_product_problems, 1)
 ```{{r product-problems-plot}}
 #| label: fig-product-problems
 #| fig-cap: !expr sprintf("Product problems representing %s%% of problem occurrences, plus Other(s) category", pct_80)
-#| fig-width: 8
+#| fig-width: 10
 #| fig-height: !expr max(10, (n_80_problems + 1) * 0.45)
 
 ggplot(product_problems_plot, aes(x = problems, y = n)) +
@@ -696,7 +697,8 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
   scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15)), position = "right") +
+  scale_x_discrete(expand = expansion(add = c(0.6, 0.6))) +
   labs(
     subtitle = paste0("(", format(date_min, "%B %Y"), 
                      " - ", format(date_max, "%B %Y"), ")"),
@@ -704,7 +706,10 @@ ggplot(product_problems_plot, aes(x = problems, y = n)) +
     y = "Number of Occurrences",
     caption = "Source: FDA MAUDE Database | Note: Reports may contain multiple problems"
   ) +
-  theme(axis.text.y = element_text(size = 8))
+  theme(
+    axis.text.y = element_text(size = 11, hjust = 1),  # Increased to 11 for better readability
+    plot.margin = margin(5.5, 5.5, 5.5, 90, "pt")
+  )
 ```
 
 A total of **`r n_80_problems`** product problem type(s) account for **`r pct_80`%** of all reported problem occurrences (**`r format(total_80_product_problems, big.mark = ",")`** occurrences).
@@ -805,7 +810,10 @@ ggplot(patient_problems_plot, aes(x = problems, y = n)) +
     y = "Number of Occurrences",
     caption = "Source: FDA MAUDE Database | Note: Reports may contain multiple problems"
   ) +
-  theme(axis.text.y = element_text(size = 8))
+  theme(
+    axis.text.y = element_text(size = 11, hjust = 1),  # Increased to 11 for better readability
+    plot.margin = margin(5.5, 5.5, 5.5, 60, "pt")
+  )
 ```
 
 A total of **`r n_80_patient_problems`** patient problem type(s) account for **`r pct_80_patient`%** of all reported patient problem occurrences (**`r format(total_80_patient_problems, big.mark = ",")`** occurrences).
@@ -887,7 +895,7 @@ manufacturers_table_data <- manufacturers_80
 ```{{r manufacturer-plot}}
 #| label: fig-manufacturers
 #| fig-cap: !expr sprintf("Manufacturers representing %s%% of reports, plus Other(s) category", pct_80_manufacturer)
-#| fig-width: 8
+#| fig-width: 10
 #| fig-height: !expr max(6.5, (n_80_manufacturers + 1) * 0.4)
 
 ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
@@ -897,13 +905,17 @@ ggplot(top_manufacturers, aes(x = manufacturer_std, y = n)) +
   scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
   coord_flip() +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.12))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15)), position = "right") +
+  scale_x_discrete(expand = expansion(add = c(0.6, 0.6))) +
   labs(
     x = "Manufacturer",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
   ) +
-  theme(axis.text.y = element_text(size = 8))
+  theme(
+    axis.text.y = element_text(size = 11, hjust = 1),  # Increased to 11 for better readability
+    plot.margin = margin(5.5, 5.5, 5.5, 90, "pt")
+  )
 ```
 
 A total of **`r n_80_manufacturers`** manufacturer(s) account for **`r pct_80_manufacturer`%** of all reports (**`r format(total_80_manufacturer_reports, big.mark = ",")`** reports).
@@ -999,7 +1011,7 @@ brands_table_data <- brands_80
 ```{{r brand-plot}}
 #| label: fig-brands
 #| fig-cap: !expr sprintf("Device brands representing %s%% of reports, plus Other(s) category", pct_80_brand)
-#| fig-width: 10
+#| fig-width: 12
 #| fig-height: !expr max(6, (n_80_brands + 1) * 0.4)
 
 ggplot(top_brands, aes(x = brand_std, y = n)) +
@@ -1009,13 +1021,17 @@ ggplot(top_brands, aes(x = brand_std, y = n)) +
   scale_alpha_manual(values = c("FALSE" = 0.8, "TRUE" = 0.6)) +
   geom_text(aes(label = n), hjust = -0.3, size = 3.5) +
   coord_flip() +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.12)), position = "right") +
+  scale_x_discrete(expand = expansion(add = c(0.6, 0.6))) +
   labs(
     x = "Brand",
     y = "Number of Reports",
     caption = "Source: FDA MAUDE Database"
   ) +
-  theme(axis.text.y = element_text(size = 7))
+  theme(
+    axis.text.y = element_text(size = 11, hjust = 1),  # Increased to 11 for better readability
+    plot.margin = margin(5.5, 5.5, 5.5, 110, "pt")
+  )
 ```
 
 
