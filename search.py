@@ -48,7 +48,7 @@ def main():
     else:
         print(f'⚠ Warning: The {database} database is not supported by openFDA_parser')
         print("  Data will be saved as JSON only, no CSV will be generated.")
-        return
+        return None, None, None, None
 
     # Convert to DataFrame
     df = pd.DataFrame(df)
@@ -99,6 +99,8 @@ def main():
     print(f"CSV File:     {csv_name}")
     print(f"Metadata:     {metadata_name}")
     print("="*60 + "\n")
+    
+    return database, original_query, n_results, last_updated
 
 
 if __name__ == "__main__":

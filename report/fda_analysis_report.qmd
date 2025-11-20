@@ -953,21 +953,21 @@ for(i in 1:nrow(all_80_patient)) {
 
 ### Data Query Information {#sec-query-info}
 
-**Search Query**: Acrysof IQ date_received:[2025-01-01+TO+2025-10-30]
+**Search Query**: In2bones
 
 **OpenFDA Database**: event
 
 **API Endpoint**: https://api.fda.gov/device/event.json
 
-**Search Executed**: 2025-11-20 13:37:34
+**Search Executed**: 2025-11-20 14:27:15
 
 **Data Last Updated**: 2025-11-11
 
-**Total Results**: 864 records found in OpenFDA database
+**Total Results**: 142 records found in OpenFDA database
 
-**Records Retrieved**: 864 records
+**Records Retrieved**: 142 records
 
-**Records Analyzed**: 858 records (after data cleaning)
+**Records Analyzed**: 127 records (after data cleaning)
 
 ### Fuzzy Matching Algorithm {#sec-fuzzy-matching-details}
 
@@ -1037,7 +1037,7 @@ for(i in 1:nrow(all_80_patient)) {
 
 ## Report Metadata
 
-- **Generated**: 2025-11-20 13:56:04
-- **Dataset Version**: 2025-10-29
-- **Total Records Analyzed**: 858
+- **Generated**: 2025-11-20 14:27:17
+- **Dataset Version**: 2025-10-16
+- **Total Records Analyzed**: 127
 - **Analysis Pipeline**: OpenFDA Medical Device Adverse Event Analysis v2.1
